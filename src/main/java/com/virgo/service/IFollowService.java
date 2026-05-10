@@ -1,12 +1,14 @@
 package com.virgo.service;
 
-import com.virgo.dto.Result;
+import com.virgo.dto.UserDTO;
 import com.virgo.entity.Follow;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
+
 /**
  * <p>
- *  服务类
+ * 服务类
  * </p>
  *
  * @author 虎哥
@@ -14,9 +16,9 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface IFollowService extends IService<Follow> {
 
-    Result follow(Long followUserId, Boolean isFollow);
+    void follow(Long followUserId, Boolean isFollow);
 
-    Result isFollow(Long followUserId);
+    Boolean isFollow(Long followUserId);
 
-    Result followCommons(Long id);
+    List<UserDTO> followCommons(Long id);
 }

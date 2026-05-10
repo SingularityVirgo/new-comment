@@ -1,85 +1,67 @@
 package com.virgo.controller;
 
-
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.virgo.dto.Result;
-import com.virgo.dto.UserDTO;
 import com.virgo.entity.Blog;
 import com.virgo.service.IBlogService;
-import com.virgo.utils.SystemConstants;
-import com.virgo.utils.UserHolder;
-import jakarta.annotation.Resource;
-import org.springframework.web.bind.annotation.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-
-import java.util.List;
-
-/**
- * <p>
- * 前端控制器
- * </p>
- *
- * @author 虎哥
- */
 @RestController
 @RequestMapping("/blog")
+@RequiredArgsConstructor
 public class BlogController {
 
-    @Resource
-    private IBlogService blogService;
+    private final IBlogService blogService;
 
     @PostMapping
-    public Result saveBlog(@RequestBody Blog blog) {
-        return blogService.saveBlog(blog);
+    public Result<?> saveBlog(@RequestBody Blog blog) {
+        return Result.ok(blogService.saveBlog(blog));
     }
 
     @PutMapping("/like/{id}")
-    public Result likeBlog(@PathVariable("id") Long id) {
-        return blogService.likeBlog(id);
+    public Result<?> likeBlog(@PathVariable("id") Long id) {
+        blogService.likeBlog(id);
+        return Result.ok();
     }
 
     @GetMapping("/of/me")
-    public Result queryMyBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
-        // 获取登录用户
-        UserDTO user = UserHolder.getUser();
-        // 根据用户查询
-        Page<Blog> page = blogService.query()
-                .eq("user_id", user.getId()).page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
-        // 获取当前页数据
-        List<Blog> records = page.getRecords();
-        return Result.ok(records);
+    public Result<?> queryMyBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
+        return Result.ok(blogService.pageBlogsForCurrentUser(current));
     }
 
     @GetMapping("/hot")
-    public Result queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
-        return blogService.queryHotBlog(current);
+    public Result<?> queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
+        return Result.ok(blogService.queryHotBlog(current));
     }
 
     @GetMapping("/{id}")
-    public Result queryBlogById(@PathVariable("id") Long id) {
-        return blogService.queryBlogById(id);
+    public Result<?> queryBlogById(@PathVariable("id") Long id) {
+        return Result.ok(blogService.queryBlogById(id));
     }
 
     @GetMapping("/likes/{id}")
-    public Result queryBlogLikes(@PathVariable("id") Long id) {
-        return blogService.queryBlogLikes(id);
+    public Result<?> queryBlogLikes(@PathVariable("id") Long id) {
+        return Result.ok(blogService.queryBlogLikes(id));
     }
 
     @GetMapping("/of/user")
-    public Result queryBlogByUserId(
+    public Result<?> queryBlogByUserId(
             @RequestParam(value = "current", defaultValue = "1") Integer current,
             @RequestParam("id") Long id) {
-        // 根据用户查询
-        Page<Blog> page = blogService.query()
-                .eq("user_id", id).page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
-        // 获取当前页数据
-        List<Blog> records = page.getRecords();
-        return Result.ok(records);
+        return Result.ok(blogService.pageBlogsForUser(id, current));
     }
 
     @GetMapping("/of/follow")
-    public Result queryBlogOfFollow(
-            @RequestParam("lastId") Long max, @RequestParam(value = "offset", defaultValue = "0") Integer offset){
-        return blogService.queryBlogOfFollow(max, offset);
+    public Result<?> queryBlogOfFollow(
+            @RequestParam("lastId") Long max,
+            @RequestParam(value = "offset", defaultValue = "0") Integer offset) {
+        return Result.ok(blogService.queryBlogOfFollow(max, offset));
     }
 }

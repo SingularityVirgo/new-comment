@@ -3,7 +3,6 @@ package com.virgo.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.virgo.dto.Result;
 import com.virgo.dto.UserDTO;
 import com.virgo.entity.Follow;
 import com.virgo.mapper.FollowMapper;
@@ -37,7 +36,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
     private IUserService userService;
 
     @Override
-    public Result follow(Long followUserId, Boolean isFollow) {
+    public void follow(Long followUserId, Boolean isFollow) {
         // 1.获取登录用户
         Long userId = UserHolder.getUser().getId();
         String key = "follows:" + userId;
@@ -61,21 +60,19 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
                 stringRedisTemplate.opsForSet().remove(key, followUserId.toString());
             }
         }
-        return Result.ok();
     }
 
     @Override
-    public Result isFollow(Long followUserId) {
+    public Boolean isFollow(Long followUserId) {
         // 1.获取登录用户
         Long userId = UserHolder.getUser().getId();
         // 2.查询是否关注 select count(*) from tb_follow where user_id = ? and follow_user_id = ?
         Integer count = Math.toIntExact(query().eq("user_id", userId).eq("follow_user_id", followUserId).count());
-        // 3.判断
-        return Result.ok(count > 0);
+        return count > 0;
     }
 
     @Override
-    public Result followCommons(Long id) {
+    public List<UserDTO> followCommons(Long id) {
         // 1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         String key = "follows:" + userId;
@@ -83,16 +80,14 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
         String key2 = "follows:" + id;
         Set<String> intersect = stringRedisTemplate.opsForSet().intersect(key, key2);
         if (intersect == null || intersect.isEmpty()) {
-            // 无交集
-            return Result.ok(Collections.emptyList());
+            return Collections.emptyList();
         }
         // 3.解析id集合
         List<Long> ids = intersect.stream().map(Long::valueOf).collect(Collectors.toList());
         // 4.查询用户
-        List<UserDTO> users = userService.listByIds(ids)
+        return userService.listByIds(ids)
                 .stream()
                 .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
                 .collect(Collectors.toList());
-        return Result.ok(users);
     }
 }

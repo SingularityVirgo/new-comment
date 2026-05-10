@@ -2,7 +2,7 @@ package com.virgo.service.impl;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
-import com.virgo.dto.Result;
+import com.virgo.common.exception.BizException;
 import com.virgo.entity.ShopType;
 import com.virgo.mapper.ShopTypeMapper;
 import com.virgo.service.IShopTypeService;
@@ -29,17 +29,16 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
     StringRedisTemplate stringRedisTemplate;
 
     @Override
-    public Result queryTypeList() {
+    public List<ShopType> queryTypeList() {
         String shopTypeJson = stringRedisTemplate.opsForValue().get(CACHE_SHOP_TYPE_KEY);
-        if(StrUtil.isNotBlank(shopTypeJson)){
-            List<ShopType> typeList = JSONUtil.toList(shopTypeJson, ShopType.class);
-            return Result.ok(typeList);
+        if (StrUtil.isNotBlank(shopTypeJson)) {
+            return JSONUtil.toList(shopTypeJson, ShopType.class);
         }
         List<ShopType> typeList = this.query().orderByAsc("sort").list();
-        if(typeList == null){
-            return Result.fail("种类不存在");
+        if (typeList == null || typeList.isEmpty()) {
+            throw new BizException("种类不存在");
         }
         stringRedisTemplate.opsForValue().set(CACHE_SHOP_TYPE_KEY, JSONUtil.toJsonStr(typeList));
-        return Result.ok(typeList);
+        return typeList;
     }
 }

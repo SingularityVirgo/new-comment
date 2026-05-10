@@ -1,12 +1,11 @@
 package com.virgo.service;
 
-import com.virgo.dto.Result;
 import com.virgo.entity.VoucherOrder;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
  * <p>
- *  服务类
+ * 服务类
  * </p>
  *
  * @author 虎哥
@@ -14,5 +13,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface IVoucherOrderService extends IService<VoucherOrder> {
 
-    Result seckillVoucher(Long voucherId);
+    Long seckillVoucher(Long voucherId);
 }

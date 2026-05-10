@@ -2,7 +2,7 @@ package com.virgo.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.virgo.dto.Result;
+import com.virgo.common.exception.BizException;
 import com.virgo.entity.VoucherOrder;
 import com.virgo.mapper.VoucherOrderMapper;
 import com.virgo.service.ISeckillVoucherService;
@@ -196,7 +196,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     @Override
-    public Result seckillVoucher(Long voucherId) {
+    public Long seckillVoucher(Long voucherId) {
         Long userId = UserHolder.getUser().getId();
         long orderId = redisIdWorker.nextId("order");
 
@@ -218,13 +218,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 args.toArray()
         );
         int r = result.intValue();
-        // 4. 判断结果
         if (r != 0) {
-            return Result.fail(r == 1 ? "库存不足" : "不能重复下单");
+            throw new BizException(r == 1 ? "库存不足" : "不能重复下单");
         }
-
-        // 5. 返回订单id
-        return Result.ok(orderId);
+        return orderId;
     }
 
     /*@Override

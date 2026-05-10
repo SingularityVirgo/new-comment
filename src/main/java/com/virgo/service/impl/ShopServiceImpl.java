@@ -4,7 +4,7 @@ import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.virgo.dto.Result;
+import com.virgo.common.exception.BizException;
 import com.virgo.entity.Shop;
 import com.virgo.utils.CacheClient;
 import com.virgo.utils.RedisData;
@@ -12,7 +12,7 @@ import com.virgo.mapper.ShopMapper;
 import com.virgo.service.IShopService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.virgo.utils.SystemConstants;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.GeoResult;
 import org.springframework.data.geo.GeoResults;
@@ -29,24 +29,15 @@ import java.util.concurrent.TimeUnit;
 
 import static com.virgo.utils.RedisConstants.*;
 
-/**
- * <p>
- *  服务实现类
- * </p>
- *
- * @author 虎哥
- * @since 2021-12-22
- */
 @Service
+@RequiredArgsConstructor
 public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IShopService {
 
-    @Autowired
-    private StringRedisTemplate stringRedisTemplate;
-    @Autowired
-    private CacheClient cacheClient;
-    @Override
+    private final StringRedisTemplate stringRedisTemplate;
+    private final CacheClient cacheClient;
 
-    public Result queryById(Long id) {
+    @Override
+    public Shop queryById(Long id) {
         // 解决缓存穿透
         Shop shop = cacheClient
                 .queryWithPassThrough(CACHE_SHOP_KEY, id, Shop.class, this::getById, CACHE_SHOP_TTL, TimeUnit.MINUTES);
@@ -60,38 +51,32 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         //         .queryWithLogicalExpire(CACHE_SHOP_KEY, id, Shop.class, this::getById, 20L, TimeUnit.SECONDS);
 
         if (shop == null) {
-            return Result.fail("店铺不存在！");
+            throw new BizException("店铺不存在！");
         }
-        // 7.返回
-        return Result.ok(shop);
-
+        return shop;
     }
 
 
     @Override
     @Transactional
-    public Result update(Shop shop) {
+    public void updateShop(Shop shop) {
         Long id = shop.getId();
         if (id == null) {
-            return Result.fail("店铺id不能为空");
+            throw new BizException("店铺id不能为空");
         }
-        // 1.更新数据库
         updateById(shop);
-        // 2.删除缓存
         stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
-        return Result.ok();
     }
 
     @Override
-    public Result queryShopByType(Integer typeId, Integer current, Double x, Double y) {
+    public List<Shop> queryShopByType(Integer typeId, Integer current, Double x, Double y) {
         // 1.判断是否需要根据坐标查询
         if (x == null || y == null) {
             // 不需要坐标查询，按数据库查询
             Page<Shop> page = query()
                     .eq("type_id", typeId)
                     .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
-            // 返回数据
-            return Result.ok(page.getRecords());
+            return page.getRecords();
         }
 
         // 2.计算分页参数
@@ -109,12 +94,11 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
                 );
         // 4.解析出id
         if (results == null) {
-            return Result.ok(Collections.emptyList());
+            return Collections.emptyList();
         }
         List<GeoResult<RedisGeoCommands.GeoLocation<String>>> list = results.getContent();
         if (list.size() <= from) {
-            // 没有下一页了，结束
-            return Result.ok(Collections.emptyList());
+            return Collections.emptyList();
         }
         // 4.1.截取 from ~ end的部分
         List<Long> ids = new ArrayList<>(list.size());
@@ -133,8 +117,15 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         for (Shop shop : shops) {
             shop.setDistance(distanceMap.get(shop.getId().toString()).getValue());
         }
-        // 6.返回
-        return Result.ok(shops);
+        return shops;
     }
 
+    @Override
+    public List<Shop> queryShopByName(String name, Integer current) {
+        Page<Shop> page = query()
+                .like(StrUtil.isNotBlank(name), "name", name)
+                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+        return page.getRecords();
+    }
 }
+

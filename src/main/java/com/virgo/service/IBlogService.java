@@ -1,12 +1,15 @@
 package com.virgo.service;
 
-import com.virgo.dto.Result;
+import com.virgo.dto.ScrollResult;
+import com.virgo.dto.UserDTO;
 import com.virgo.entity.Blog;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
+
 /**
  * <p>
- *  服务类
+ * 服务类
  * </p>
  *
  * @author 虎哥
@@ -14,15 +17,19 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface IBlogService extends IService<Blog> {
 
-    Result queryHotBlog(Integer current);
+    List<Blog> queryHotBlog(Integer current);
 
-    Result queryBlogById(Long id);
+    Blog queryBlogById(Long id);
 
-    Result likeBlog(Long id);
+    void likeBlog(Long id);
 
-    Result queryBlogLikes(Long id);
+    List<UserDTO> queryBlogLikes(Long id);
 
-    Result saveBlog(Blog blog);
+    Long saveBlog(Blog blog);
 
-    Result queryBlogOfFollow(Long max, Integer offset);
+    ScrollResult queryBlogOfFollow(Long max, Integer offset);
+
+    List<Blog> pageBlogsForCurrentUser(Integer current);
+
+    List<Blog> pageBlogsForUser(Long userId, Integer current);
 }

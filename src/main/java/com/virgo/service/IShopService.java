@@ -1,12 +1,13 @@
 package com.virgo.service;
 
-import com.virgo.dto.Result;
 import com.virgo.entity.Shop;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
+
 /**
  * <p>
- *  服务类
+ * 服务类
  * </p>
  *
  * @author 虎哥
@@ -14,8 +15,11 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface IShopService extends IService<Shop> {
 
-    Result queryById(Long id);
-    Result update(Shop shop);
+    Shop queryById(Long id);
 
-    Result queryShopByType(Integer typeId, Integer current, Double x, Double y);
+    void updateShop(Shop shop);
+
+    List<Shop> queryShopByType(Integer typeId, Integer current, Double x, Double y);
+
+    List<Shop> queryShopByName(String name, Integer current);
 }

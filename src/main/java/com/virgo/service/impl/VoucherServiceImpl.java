@@ -1,7 +1,6 @@
 package com.virgo.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.virgo.dto.Result;
 import com.virgo.entity.Voucher;
 import com.virgo.mapper.VoucherMapper;
 import com.virgo.entity.SeckillVoucher;
@@ -35,11 +34,8 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     private StringRedisTemplate stringRedisTemplate;
 
     @Override
-    public Result queryVoucherOfShop(Long shopId) {
-        // 查询优惠券信息
-        List<Voucher> vouchers = getBaseMapper().queryVoucherOfShop(shopId);
-        // 返回结果
-        return Result.ok(vouchers);
+    public List<Voucher> queryVoucherOfShop(Long shopId) {
+        return getBaseMapper().queryVoucherOfShop(shopId);
     }
 
     @Override
