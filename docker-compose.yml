@@ -10,7 +10,11 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./src/main/resources/db/hmdp.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # 与旧版 Navicat 导出的 hmdp.sql 中 timestamp 默认值兼容（避免 0000-00-00 在 MySQL 8 下报错）
+      - --sql-mode=ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
       interval: 5s
