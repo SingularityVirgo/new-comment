@@ -1,0 +1,19 @@
+# https://editorconfig.org
+# Default charset for this repo: UTF-8 (same as Maven compiler / Spring / JDBC).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{java,xml,yml,yaml,properties,sql,md,json,tsx,ts,jsx,js,css,html}]
+indent_style = space
+indent_size = 4
+
+[*.{tsx,ts,jsx,js,css,html,json}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

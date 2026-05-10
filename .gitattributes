@@ -1,0 +1,4 @@
+# UTF-8 + LF: align with Maven (project.build.sourceEncoding) and EditorConfig.
+* text=auto eol=lf
+*.java text diff=java
+*.{xml,yml,yaml,properties,sql,md,json,tsx,ts,jsx,js,css,html} text
