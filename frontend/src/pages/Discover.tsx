@@ -49,14 +49,16 @@ export function Discover() {
         list.map((b) => (
           <Link key={b.id} to={`/blog/${b.id}`} className="card" style={{ display: 'block', color: 'inherit' }}>
             <div className="row" style={{ alignItems: 'flex-start' }}>
-              <img className="avatar" src={assetUrl(b.icon)} alt="" width={44} height={44} />
+              <img className="avatar" src={assetUrl(b.icon)} alt="" width={44} height={44} loading="lazy" decoding="async" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="feed-title">{b.title}</div>
                 <div className="muted" style={{ marginTop: 4 }}>
                   {b.name} · 赞 {b.liked}
                 </div>
               </div>
-              {firstImage(b.images) && <img className="feed-thumb" src={firstImage(b.images)} alt="" />}
+              {firstImage(b.images) && (
+                <img className="feed-thumb" src={firstImage(b.images)} alt="" loading="lazy" decoding="async" />
+              )}
             </div>
           </Link>
         ))}

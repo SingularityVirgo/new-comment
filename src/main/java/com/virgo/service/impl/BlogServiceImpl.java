@@ -25,13 +25,17 @@ import com.virgo.service.IUserService;
 import com.virgo.utils.SystemConstants;
 import com.virgo.utils.UserHolder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -53,7 +57,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
                 .orderByDesc("liked")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         List<Blog> records = page.getRecords();
-        records.forEach(this::enrichBlog);
+        enrichBlogs(records);
         return records.stream().map(this::toFeedDto).collect(Collectors.toList());
     }
 
@@ -65,16 +69,6 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         }
         enrichBlog(blog);
         return toFeedDto(blog);
-    }
-
-    private void isBlogLiked(Blog blog) {
-        CurrentUser user = UserHolder.getUser();
-        if (user == null) {
-            return;
-        }
-        String key = BLOG_LIKED_KEY + blog.getId();
-        Double score = stringRedisTemplate.opsForZSet().score(key, user.getId().toString());
-        blog.setIsLike(score != null);
     }
 
     @Override
@@ -160,9 +154,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         }
         String idStr = StrUtil.join(",", ids);
         List<Blog> blogs = query().in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list();
-        for (Blog b : blogs) {
-            enrichBlog(b);
-        }
+        enrichBlogs(blogs);
         BlogFollowScrollDto scrollResult = new BlogFollowScrollDto();
         scrollResult.setList(blogs.stream().map(this::toFeedDto).collect(Collectors.toList()));
         scrollResult.setOffset(os);
@@ -177,7 +169,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
                 .eq("user_id", user.getId())
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         List<Blog> records = page.getRecords();
-        records.forEach(this::queryBlogUser);
+        applyBlogAuthors(records);
         return records.stream().map(this::toFeedDto).collect(Collectors.toList());
     }
 
@@ -187,7 +179,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
                 .eq("user_id", userId)
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         List<Blog> records = page.getRecords();
-        records.forEach(this::queryBlogUser);
+        applyBlogAuthors(records);
         return records.stream().map(this::toFeedDto).collect(Collectors.toList());
     }
 
@@ -247,15 +239,55 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     }
 
     private void enrichBlog(Blog blog) {
-        queryBlogUser(blog);
-        isBlogLiked(blog);
+        enrichBlogs(Collections.singletonList(blog));
     }
 
-    private void queryBlogUser(Blog blog) {
-        Long uid = blog.getUserId();
-        User user = userService.getById(uid);
-        blog.setName(user.getNickName());
-        blog.setIcon(user.getIcon());
+    /** ??????????????? N+1 ???? */
+    private void applyBlogAuthors(List<Blog> blogs) {
+        if (blogs == null || blogs.isEmpty()) {
+            return;
+        }
+        Set<Long> userIds = blogs.stream().map(Blog::getUserId).filter(Objects::nonNull).collect(Collectors.toSet());
+        if (userIds.isEmpty()) {
+            return;
+        }
+        Map<Long, User> userMap = userService.listByIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+        for (Blog blog : blogs) {
+            User u = userMap.get(blog.getUserId());
+            if (u != null) {
+                blog.setName(u.getNickName());
+                blog.setIcon(u.getIcon());
+            }
+        }
+    }
+
+    /**
+     * ??????????????????? Redis ?????????? N+1?
+     */
+    private void enrichBlogs(List<Blog> blogs) {
+        if (blogs == null || blogs.isEmpty()) {
+            return;
+        }
+        applyBlogAuthors(blogs);
+        CurrentUser current = UserHolder.getUser();
+        if (current == null) {
+            return;
+        }
+        String member = current.getId().toString();
+        RedisSerializer<String> ser = stringRedisTemplate.getStringSerializer();
+        List<Object> scores = stringRedisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            for (Blog blog : blogs) {
+                byte[] keyBytes = ser.serialize(BLOG_LIKED_KEY + blog.getId());
+                byte[] memberBytes = ser.serialize(member);
+                connection.zSetCommands().zScore(keyBytes, memberBytes);
+            }
+            return null;
+        });
+        for (int i = 0; i < blogs.size(); i++) {
+            Double score = (Double) scores.get(i);
+            blogs.get(i).setIsLike(score != null);
+        }
     }
 
     private BlogFeedDto toFeedDto(Blog blog) {
