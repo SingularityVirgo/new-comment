@@ -2,7 +2,7 @@ package com.virgo.controller;
 
 import com.virgo.domain.dto.auth.LoginRequest;
 import com.virgo.domain.dto.userinfo.UserInfoUpdateCommand;
-import com.virgo.dto.Result;
+import com.virgo.web.api.Result;
 import com.virgo.service.IUserInfoService;
 import com.virgo.service.IUserService;
 import com.virgo.utils.UserHolder;

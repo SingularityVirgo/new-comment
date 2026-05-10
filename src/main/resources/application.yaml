@@ -1,11 +1,16 @@
 server:
   port: 8081
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
 spring:
   application:
     name: virgo
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/comment?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/comment?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
     username: root
     password: 123456
 
@@ -23,7 +28,7 @@ spring:
           min-idle: 0
         shutdown-timeout: 100ms
 mybatis-plus:
-  type-aliases-package: com.virgo.entity
+  type-aliases-package: com.virgo.domain.po
 logging:
   level:
     com.virgo: debug

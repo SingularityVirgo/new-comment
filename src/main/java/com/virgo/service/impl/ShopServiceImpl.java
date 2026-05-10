@@ -1,13 +1,10 @@
 package com.virgo.service.impl;
 
-import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.virgo.common.exception.BizException;
-import com.virgo.entity.Shop;
+import com.virgo.domain.po.Shop;
 import com.virgo.utils.CacheClient;
-import com.virgo.utils.RedisData;
 import com.virgo.mapper.ShopMapper;
 import com.virgo.service.IShopService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -18,13 +15,15 @@ import org.springframework.data.geo.GeoResult;
 import org.springframework.data.geo.GeoResults;
 import org.springframework.data.redis.connection.RedisGeoCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
-
 import org.springframework.data.redis.domain.geo.GeoReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.virgo.utils.RedisConstants.*;
@@ -38,31 +37,22 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     @Override
     public Shop queryById(Long id) {
-        // 解决缓存穿透
+        // Cache-aside with pass-through on miss (avoids cache penetration for non-existent keys)
         Shop shop = cacheClient
                 .queryWithPassThrough(CACHE_SHOP_KEY, id, Shop.class, this::getById, CACHE_SHOP_TTL, TimeUnit.MINUTES);
 
-        // 互斥锁解决缓存击穿
-        // Shop shop = cacheClient
-        //         .queryWithMutex(CACHE_SHOP_KEY, id, Shop.class, this::getById, CACHE_SHOP_TTL, TimeUnit.MINUTES);
-
-        // 逻辑过期解决缓存击穿
-        // Shop shop = cacheClient
-        //         .queryWithLogicalExpire(CACHE_SHOP_KEY, id, Shop.class, this::getById, 20L, TimeUnit.SECONDS);
-
         if (shop == null) {
-            throw new BizException("店铺不存在！");
+            throw new BizException("\u5e97\u94fa\u4e0d\u5b58\u5728\uff01");
         }
         return shop;
     }
-
 
     @Override
     @Transactional
     public void updateShop(Shop shop) {
         Long id = shop.getId();
         if (id == null) {
-            throw new BizException("店铺id不能为空");
+            throw new BizException("\u5e97\u94faid\u4e0d\u80fd\u4e3a\u7a7a");
         }
         updateById(shop);
         stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
@@ -70,29 +60,24 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     @Override
     public List<Shop> queryShopByType(Integer typeId, Integer current, Double x, Double y) {
-        // 1.判断是否需要根据坐标查询
         if (x == null || y == null) {
-            // 不需要坐标查询，按数据库查询
             Page<Shop> page = query()
                     .eq("type_id", typeId)
                     .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
             return page.getRecords();
         }
 
-        // 2.计算分页参数
         int from = (current - 1) * SystemConstants.DEFAULT_PAGE_SIZE;
         int end = current * SystemConstants.DEFAULT_PAGE_SIZE;
 
-        // 3.查询redis、按照距离排序、分页。结果：shopId、distance
         String key = SHOP_GEO_KEY + typeId;
-        GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo() // GEOSEARCH key BYLONLAT x y BYRADIUS 10 WITHDISTANCE
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo()
                 .search(
                         key,
                         GeoReference.fromCoordinate(x, y),
                         new Distance(5000),
                         RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeDistance().limit(end)
                 );
-        // 4.解析出id
         if (results == null) {
             return Collections.emptyList();
         }
@@ -100,18 +85,14 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         if (list.size() <= from) {
             return Collections.emptyList();
         }
-        // 4.1.截取 from ~ end的部分
         List<Long> ids = new ArrayList<>(list.size());
         Map<String, Distance> distanceMap = new HashMap<>(list.size());
         list.stream().skip(from).forEach(result -> {
-            // 4.2.获取店铺id
             String shopIdStr = result.getContent().getName();
             ids.add(Long.valueOf(shopIdStr));
-            // 4.3.获取距离
             Distance distance = result.getDistance();
             distanceMap.put(shopIdStr, distance);
         });
-        // 5.根据id查询Shop
         String idStr = StrUtil.join(",", ids);
         List<Shop> shops = query().in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list();
         for (Shop shop : shops) {
@@ -132,15 +113,14 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     public void removeShop(Long id) {
         Shop shop = getById(id);
         if (shop == null) {
-            throw new BizException("店铺不存在！");
+            throw new BizException("\u5e97\u94fa\u4e0d\u5b58\u5728\uff01");
         }
         if (shop.getTypeId() != null) {
             stringRedisTemplate.opsForGeo().remove(SHOP_GEO_KEY + shop.getTypeId(), shop.getId().toString());
         }
         stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
         if (!removeById(id)) {
-            throw new BizException("删除店铺失败");
+            throw new BizException("\u5220\u9664\u5e97\u94fa\u5931\u8d25");
         }
     }
 }
-
