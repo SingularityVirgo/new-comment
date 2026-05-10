@@ -36,38 +36,54 @@ export function FollowFeed() {
 
   return (
     <>
-      <h1 style={{ fontSize: '1.25rem', margin: '0 0 12px' }}>关注动态</h1>
-      <p className="muted">展示你关注的人发布的笔记（与后端 `ScrollResult` 滚动分页一致）。</p>
+      <header className="page-head">
+        <h1 className="page-title">关注动态</h1>
+        <p className="page-lead">你关注的人发布的笔记，滚动加载与后端 ScrollResult 一致。</p>
+      </header>
       {err && <div className="error-banner">{err}</div>}
       {blogs.length === 0 && !done && (
-        <button type="button" className="btn btn-primary" onClick={() => void load()} disabled={loading}>
-          {loading ? '加载中…' : '加载动态'}
+        <button type="button" className="btn btn-primary" style={{ padding: '12px 28px' }} onClick={() => void load()} disabled={loading}>
+          {loading ? (
+            <span className="row" style={{ gap: 10 }}>
+              <span className="spinner" aria-hidden />
+              加载中…
+            </span>
+          ) : (
+            '加载动态'
+          )}
         </button>
       )}
       {blogs.map((b) => (
-        <Link key={`${b.id}-${b.createTime ?? ''}`} to={`/blog/${b.id}`} className="card" style={{ display: 'flex', gap: 12, color: 'inherit' }}>
+        <Link key={`${b.id}-${b.createTime ?? ''}`} to={`/blog/${b.id}`} className="card" style={{ display: 'flex', gap: 14, color: 'inherit', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600 }}>{b.title}</div>
-            <div className="muted">
+            <div className="feed-title">{b.title}</div>
+            <div className="muted" style={{ marginTop: 4 }}>
               {b.name} · 赞 {b.liked}
             </div>
           </div>
           {b.images?.split(',')[0] && (
-            <img
-              src={assetUrl(b.images.split(',')[0].trim())}
-              alt=""
-              style={{ width: 72, height: 72, borderRadius: 8, objectFit: 'cover' }}
-            />
+            <img className="feed-thumb" src={assetUrl(b.images.split(',')[0].trim())} alt="" />
           )}
         </Link>
       ))}
       {blogs.length > 0 && !done && (
-        <button type="button" className="btn" style={{ width: '100%', marginTop: 8 }} disabled={loading} onClick={() => void load()}>
-          {loading ? '加载中…' : '加载更多'}
+        <button type="button" className="btn" style={{ width: '100%', marginTop: 12 }} disabled={loading} onClick={() => void load()}>
+          {loading ? (
+            <span className="row" style={{ gap: 10 }}>
+              <span className="spinner" aria-hidden />
+              加载中…
+            </span>
+          ) : (
+            '加载更多'
+          )}
         </button>
       )}
-      {done && blogs.length > 0 && <p className="muted">没有更多了</p>}
-      {done && blogs.length === 0 && <p className="muted">暂无动态，先去关注一些用户吧。</p>}
+      {done && blogs.length > 0 && <p className="muted" style={{ textAlign: 'center', marginTop: 16 }}>没有更多了</p>}
+      {done && blogs.length === 0 && (
+        <div className="card muted" style={{ textAlign: 'center', padding: 32 }}>
+          暂无动态，先去关注一些用户吧。
+        </div>
+      )}
     </>
   );
 }

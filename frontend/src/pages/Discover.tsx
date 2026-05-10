@@ -34,29 +34,39 @@ export function Discover() {
 
   return (
     <>
-      <h1 style={{ fontSize: '1.25rem', margin: '0 0 12px' }}>热门探店</h1>
+      <header className="page-head">
+        <h1 className="page-title">热门探店</h1>
+        <p className="page-lead">发现校园周边好店与真实笔记，左滑卡片即可点进详情。</p>
+      </header>
       {err && <div className="error-banner">{err}</div>}
-      {loading && <div className="muted">加载中…</div>}
+      {loading && (
+        <div className="loading-block card" style={{ marginBottom: 14 }}>
+          <span className="spinner" aria-hidden />
+          <span>正在加载精选内容…</span>
+        </div>
+      )}
       {!loading &&
         list.map((b) => (
           <Link key={b.id} to={`/blog/${b.id}`} className="card" style={{ display: 'block', color: 'inherit' }}>
             <div className="row" style={{ alignItems: 'flex-start' }}>
-              <img className="avatar" src={assetUrl(b.icon)} alt="" width={40} height={40} />
+              <img className="avatar" src={assetUrl(b.icon)} alt="" width={44} height={44} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600 }}>{b.title}</div>
-                <div className="muted">
+                <div className="feed-title">{b.title}</div>
+                <div className="muted" style={{ marginTop: 4 }}>
                   {b.name} · 赞 {b.liked}
                 </div>
               </div>
-              {firstImage(b.images) && (
-                <img src={firstImage(b.images)} alt="" style={{ width: 72, height: 72, borderRadius: 8, objectFit: 'cover' }} />
-              )}
+              {firstImage(b.images) && <img className="feed-thumb" src={firstImage(b.images)} alt="" />}
             </div>
           </Link>
         ))}
-      {!loading && list.length === 0 && <div className="muted">暂无数据</div>}
+      {!loading && list.length === 0 && (
+        <div className="card muted" style={{ textAlign: 'center', padding: 32 }}>
+          暂无数据，稍后再来看看吧。
+        </div>
+      )}
       {list.length >= 10 && (
-        <div className="row" style={{ justifyContent: 'center', marginTop: 8 }}>
+        <div className="pager">
           <button type="button" className="btn" disabled={current <= 1} onClick={() => setCurrent((c) => Math.max(1, c - 1))}>
             上一页
           </button>

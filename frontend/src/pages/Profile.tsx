@@ -33,34 +33,46 @@ export function Profile() {
 
   return (
     <>
-      <div className="card">
-        <div className="row">
-          <img className="avatar" src={assetUrl(user.icon)} alt="" width={56} height={56} />
-          <div>
-            <div style={{ fontWeight: 700 }}>{user.nickName}</div>
+      <div className="card" style={{ background: 'linear-gradient(145deg, rgba(45,212,191,0.08), rgba(167,139,250,0.06))' }}>
+        <div className="row" style={{ alignItems: 'flex-start' }}>
+          <img className="avatar" src={assetUrl(user.icon)} alt="" width={64} height={64} style={{ width: 64, height: 64 }} />
+          <div style={{ flex: 1 }}>
+            <div className="page-title" style={{ fontSize: '1.45rem', marginBottom: 4, WebkitTextFillColor: 'unset', color: 'var(--text)' }}>
+              {user.nickName}
+            </div>
             <div className="muted">ID：{user.id}</div>
+            <div className="row" style={{ marginTop: 16, flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-primary" onClick={() => void sign()}>
+                今日签到
+              </button>
+              <button type="button" className="btn" onClick={() => void loadStreak()}>
+                连续签到天数
+              </button>
+            </div>
+            {signTip && (
+              <div className={signTip.includes('成功') ? 'success-banner' : 'error-banner'} style={{ marginTop: 14 }}>
+                {signTip}
+              </div>
+            )}
+            {streak != null && (
+              <div className="pill" style={{ marginTop: 12, display: 'inline-block' }}>
+                本月连续签到 {streak} 天
+              </div>
+            )}
           </div>
         </div>
-        <div className="row" style={{ marginTop: 12, flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-primary" onClick={() => void sign()}>
-            今日签到
-          </button>
-          <button type="button" className="btn" onClick={() => void loadStreak()}>
-            连续签到天数
-          </button>
-        </div>
-        {signTip && <div className="muted" style={{ marginTop: 8 }}>{signTip}</div>}
-        {streak != null && <div className="muted" style={{ marginTop: 4 }}>本月连续签到：{streak} 天</div>}
       </div>
-      <h2 style={{ fontSize: '1.05rem' }}>我的笔记</h2>
+      <h2 className="section-title">我的笔记</h2>
       {blogs.map((b) => (
         <Link key={b.id} to={`/blog/${b.id}`} className="card" style={{ display: 'block', color: 'inherit' }}>
-          <div style={{ fontWeight: 600 }}>{b.title}</div>
-          <div className="muted">赞 {b.liked}</div>
+          <div className="feed-title">{b.title}</div>
+          <div className="muted" style={{ marginTop: 6 }}>
+            赞 {b.liked}
+          </div>
         </Link>
       ))}
       {blogs.length >= 10 && (
-        <div className="row" style={{ justifyContent: 'center' }}>
+        <div className="pager">
           <button type="button" className="btn" disabled={current <= 1} onClick={() => setCurrent((c) => Math.max(1, c - 1))}>
             上一页
           </button>

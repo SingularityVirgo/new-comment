@@ -67,9 +67,12 @@ export function Shops() {
 
   return (
     <>
-      <h1 style={{ fontSize: '1.25rem', margin: '0 0 12px' }}>商铺</h1>
+      <header className="page-head">
+        <h1 className="page-title">商铺</h1>
+        <p className="page-lead">按分类浏览或搜索店名，封面与评分一眼扫过。</p>
+      </header>
       <div className="card">
-        <div className="row" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
+        <div className="row" style={{ marginBottom: 14, flexWrap: 'wrap' }}>
           <button type="button" className={mode === 'type' ? 'btn btn-primary' : 'btn'} onClick={() => setMode('type')}>
             按分类
           </button>
@@ -95,7 +98,7 @@ export function Shops() {
           </div>
         )}
         {mode === 'search' && (
-          <div className="field">
+          <div className="field" style={{ marginBottom: 0 }}>
             <label>关键字</label>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="商铺名称" />
           </div>
@@ -103,19 +106,21 @@ export function Shops() {
       </div>
       {err && <div className="error-banner">{err}</div>}
       {shops.map((s) => (
-        <Link key={s.id} to={`/shop/${s.id}`} className="card" style={{ display: 'flex', gap: 12, color: 'inherit' }}>
-          {cover(s) && <img src={cover(s)} alt="" style={{ width: 88, height: 88, borderRadius: 8, objectFit: 'cover' }} />}
+        <Link key={s.id} to={`/shop/${s.id}`} className="card" style={{ display: 'flex', gap: 14, color: 'inherit', alignItems: 'center' }}>
+          {cover(s) && <img className="feed-thumb" src={cover(s)} alt="" style={{ width: 88, height: 88 }} />}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600 }}>{s.name}</div>
-            <div className="muted">{s.area}</div>
-            <div className="muted" style={{ fontSize: '0.8rem' }}>
+            <div className="feed-title">{s.name}</div>
+            <div className="muted" style={{ marginTop: 4 }}>
+              {s.area}
+            </div>
+            <div className="muted" style={{ fontSize: '0.8rem', marginTop: 6 }}>
               评分 {(s.score / 10).toFixed(1)} · ￥{s.avgPrice ?? '—'} · 销量 {s.sold}
             </div>
           </div>
         </Link>
       ))}
       {shops.length >= 10 && (
-        <div className="row" style={{ justifyContent: 'center' }}>
+        <div className="pager">
           <button type="button" className="btn" disabled={current <= 1} onClick={() => setCurrent((c) => Math.max(1, c - 1))}>
             上一页
           </button>

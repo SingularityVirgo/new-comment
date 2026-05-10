@@ -50,7 +50,13 @@ export function BlogDetail() {
   }
 
   if (err) return <div className="error-banner">{err}</div>;
-  if (!blog) return <div className="muted">加载中…</div>;
+  if (!blog)
+    return (
+      <div className="loading-block card">
+        <span className="spinner" aria-hidden />
+        <span>加载笔记中…</span>
+      </div>
+    );
 
   const imgs = blog.images
     ? blog.images
@@ -60,60 +66,62 @@ export function BlogDetail() {
     : [];
 
   return (
-    <article className="card">
-      <div className="row" style={{ marginBottom: 12 }}>
-        <Link to={`/user/${blog.userId}`}>
-          <img className="avatar" src={assetUrl(blog.icon)} alt="" width={48} height={48} />
-        </Link>
-        <div>
-          <Link to={`/user/${blog.userId}`} style={{ fontWeight: 600, color: 'inherit' }}>
-            {blog.name}
+    <article className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '22px 22px 0' }}>
+        <div className="row" style={{ marginBottom: 16 }}>
+          <Link to={`/user/${blog.userId}`}>
+            <img className="avatar" src={assetUrl(blog.icon)} alt="" width={48} height={48} />
           </Link>
-          <div className="muted">笔记 · 关联店铺 #{blog.shopId}</div>
+          <div>
+            <Link to={`/user/${blog.userId}`} style={{ fontWeight: 600, color: 'var(--text)' }}>
+              {blog.name}
+            </Link>
+            <div className="muted">笔记 · 关联店铺 #{blog.shopId}</div>
+          </div>
         </div>
+        <h1 className="page-title" style={{ fontSize: 'clamp(1.35rem, 3.5vw, 1.75rem)', WebkitTextFillColor: 'unset', color: 'var(--text)' }}>
+          {blog.title}
+        </h1>
       </div>
-      <h1 style={{ fontSize: '1.35rem', margin: '0 0 12px' }}>{blog.title}</h1>
       {imgs.length > 0 && (
-        <div className="img-grid" style={{ marginBottom: 12 }}>
+        <div className="img-grid" style={{ margin: '0 16px 16px', padding: 0 }}>
           {imgs.map((src) => (
             <img key={src} src={assetUrl(src)} alt="" />
           ))}
         </div>
       )}
-      <div
-        className="blog-body"
-        style={{ lineHeight: 1.65 }}
-        dangerouslySetInnerHTML={{ __html: blog.content }}
-      />
-      <div className="row" style={{ marginTop: 16, flexWrap: 'wrap', gap: 8 }}>
-        <button type="button" className="btn btn-primary" onClick={() => void toggleLike()}>
-          {blog.isLike ? '取消赞' : '点赞'}（{blog.liked}）
-        </button>
-        <button type="button" className="btn" onClick={() => void showLikers()}>
-          点赞排行
-        </button>
-        <Link to={`/shop/${blog.shopId}`} className="btn">
-          查看店铺
-        </Link>
-      </div>
-
-      {likers && (
-        <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>点赞用户（Top5）</div>
-          <div className="row" style={{ flexWrap: 'wrap' }}>
-            {likers.length === 0 && <span className="muted">暂无</span>}
-            {likers.map((u) => (
-              <Link key={u.id} to={`/user/${u.id}`} className="row" style={{ gap: 6 }}>
-                <img className="avatar" src={assetUrl(u.icon)} alt="" width={32} height={32} />
-                <span>{u.nickName}</span>
-              </Link>
-            ))}
-          </div>
-          <button type="button" className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => setLikers(null)}>
-            关闭
+      <div style={{ padding: '0 22px 22px' }}>
+        <div className="blog-body" dangerouslySetInnerHTML={{ __html: blog.content }} />
+        <div className="row" style={{ marginTop: 22, flexWrap: 'wrap', gap: 10 }}>
+          <button type="button" className="btn btn-primary" onClick={() => void toggleLike()}>
+            {blog.isLike ? '取消赞' : '点赞'} · {blog.liked}
           </button>
+          <button type="button" className="btn" onClick={() => void showLikers()}>
+            点赞排行
+          </button>
+          <Link to={`/shop/${blog.shopId}`} className="btn">
+            查看店铺
+          </Link>
         </div>
-      )}
+
+        {likers && (
+          <div style={{ marginTop: 22, borderTop: '1px solid var(--stroke)', paddingTop: 18 }}>
+            <div style={{ fontWeight: 600, marginBottom: 10 }}>点赞用户（Top5）</div>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
+              {likers.length === 0 && <span className="muted">暂无</span>}
+              {likers.map((u) => (
+                <Link key={u.id} to={`/user/${u.id}`} className="row" style={{ gap: 8 }}>
+                  <img className="avatar" src={assetUrl(u.icon)} alt="" width={32} height={32} />
+                  <span style={{ color: 'var(--text)' }}>{u.nickName}</span>
+                </Link>
+              ))}
+            </div>
+            <button type="button" className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => setLikers(null)}>
+              关闭
+            </button>
+          </div>
+        )}
+      </div>
     </article>
   );
 }

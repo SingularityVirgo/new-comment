@@ -11,7 +11,10 @@ export function Layout() {
   return (
     <div className="app-shell">
       <header className="top-nav">
-        <NavLink to="/" className="brand">
+        <NavLink to="/discover" className="brand" end={false}>
+          <span className="brand-mark" aria-hidden>
+            ✦
+          </span>
           mzy-comment
         </NavLink>
         <NavLink to="/discover" className={linkClass}>

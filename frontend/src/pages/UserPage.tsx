@@ -60,13 +60,15 @@ export function UserPage() {
 
   return (
     <>
-      <div className="card">
-        <div className="row">
-          <img className="avatar" src={assetUrl(profile?.icon)} alt="" width={56} height={56} />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{profile?.nickName ?? `用户 ${uid}`}</div>
+      <div className="card" style={{ background: 'linear-gradient(145deg, rgba(167,139,250,0.08), rgba(45,212,191,0.05))' }}>
+        <div className="row" style={{ alignItems: 'flex-start' }}>
+          <img className="avatar" src={assetUrl(profile?.icon)} alt="" width={64} height={64} style={{ width: 64, height: 64 }} />
+          <div style={{ flex: 1 }}>
+            <div className="page-title" style={{ fontSize: '1.4rem', marginBottom: 4, WebkitTextFillColor: 'unset', color: 'var(--text)' }}>
+              {profile?.nickName ?? `用户 ${uid}`}
+            </div>
             {me && me.id !== uid && (
-              <div className="row" style={{ marginTop: 8 }}>
+              <div className="row" style={{ marginTop: 12, flexWrap: 'wrap' }}>
                 <button type="button" className="btn btn-primary" onClick={() => void toggleFollow(!(following ?? false))}>
                   {following ? '取消关注' : '关注'}
                 </button>
@@ -78,16 +80,16 @@ export function UserPage() {
           </div>
         </div>
         {commons && (
-          <div style={{ marginTop: 12 }}>
-            <div className="muted" style={{ marginBottom: 6 }}>
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--stroke)' }}>
+            <div className="muted" style={{ marginBottom: 8, fontWeight: 600 }}>
               共同关注
             </div>
-            <div className="row" style={{ flexWrap: 'wrap' }}>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
               {commons.length === 0 && <span className="muted">无</span>}
               {commons.map((u) => (
-                <Link key={u.id} to={`/user/${u.id}`} className="row" style={{ gap: 4 }}>
-                  <img className="avatar" src={assetUrl(u.icon)} alt="" width={28} height={28} />
-                  {u.nickName}
+                <Link key={u.id} to={`/user/${u.id}`} className="row" style={{ gap: 6 }}>
+                  <img className="avatar" src={assetUrl(u.icon)} alt="" width={28} height={28} style={{ width: 28, height: 28 }} />
+                  <span style={{ color: 'var(--text)', fontSize: '0.9rem' }}>{u.nickName}</span>
                 </Link>
               ))}
             </div>
@@ -95,15 +97,17 @@ export function UserPage() {
         )}
       </div>
       {err && <div className="error-banner">{err}</div>}
-      <h2 style={{ fontSize: '1.05rem' }}>TA 的笔记</h2>
+      <h2 className="section-title">TA 的笔记</h2>
       {blogs.map((b) => (
         <Link key={b.id} to={`/blog/${b.id}`} className="card" style={{ display: 'block', color: 'inherit' }}>
-          <div style={{ fontWeight: 600 }}>{b.title}</div>
-          <div className="muted">赞 {b.liked}</div>
+          <div className="feed-title">{b.title}</div>
+          <div className="muted" style={{ marginTop: 6 }}>
+            赞 {b.liked}
+          </div>
         </Link>
       ))}
       {blogs.length >= 10 && (
-        <div className="row" style={{ justifyContent: 'center' }}>
+        <div className="pager">
           <button type="button" className="btn" disabled={current <= 1} onClick={() => setCurrent((c) => Math.max(1, c - 1))}>
             上一页
           </button>
