@@ -1,6 +1,6 @@
 package com.virgo.mapper;
 
-import com.virgo.entity.BlogComments;
+import com.virgo.domain.po.BlogComments;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**

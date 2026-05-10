@@ -3,7 +3,7 @@ package com.virgo.controller;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.virgo.common.exception.BizException;
-import com.virgo.dto.Result;
+import com.virgo.web.api.Result;
 import com.virgo.utils.SystemConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;

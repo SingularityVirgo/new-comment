@@ -1,6 +1,6 @@
 package com.virgo.mapper;
 
-import com.virgo.entity.UserInfo;
+import com.virgo.domain.po.UserInfo;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**

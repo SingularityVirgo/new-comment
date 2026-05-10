@@ -1,6 +1,6 @@
 package com.virgo.mapper;
 
-import com.virgo.entity.ShopType;
+import com.virgo.domain.po.ShopType;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 import java.util.List;

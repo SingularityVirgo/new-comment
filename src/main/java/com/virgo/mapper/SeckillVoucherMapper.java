@@ -1,6 +1,6 @@
 package com.virgo.mapper;
 
-import com.virgo.entity.SeckillVoucher;
+import com.virgo.domain.po.SeckillVoucher;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**

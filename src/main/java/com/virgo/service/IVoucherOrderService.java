@@ -1,11 +1,11 @@
 package com.virgo.service;
 
-import com.virgo.entity.VoucherOrder;
+import com.virgo.domain.po.VoucherOrder;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
  * <p>
- * 服务类
+ * 服务�?
  * </p>
  *
  * @author 虎哥

@@ -1,0 +1,11 @@
+{
+  "name": "new-comment",
+  "private": true,
+  "description": "根目录脚本：前端在 frontend/ 子目录，勿在根目录直接执行 vite。",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "install:web": "npm --prefix frontend install"
+  }
+}

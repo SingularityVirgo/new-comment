@@ -1,11 +1,11 @@
 package com.virgo.service;
 
-import com.virgo.entity.SeckillVoucher;
+import com.virgo.domain.po.SeckillVoucher;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
  * <p>
- * 秒杀优惠券表，与优惠券是一对一关系 服务类
+ * 秒杀优惠券表，与优惠券是一对一关系 服务�?
  * </p>
  *
  * @author 虎哥

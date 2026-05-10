@@ -1,7 +1,7 @@
 package com.virgo.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.virgo.entity.Voucher;
+import com.virgo.domain.po.Voucher;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;

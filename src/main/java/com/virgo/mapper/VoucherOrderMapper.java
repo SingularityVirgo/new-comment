@@ -1,6 +1,6 @@
 package com.virgo.mapper;
 
-import com.virgo.entity.VoucherOrder;
+import com.virgo.domain.po.VoucherOrder;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**

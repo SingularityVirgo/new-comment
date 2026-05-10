@@ -1,6 +1,6 @@
 package com.virgo.controller;
 
-import com.virgo.dto.Result;
+import com.virgo.web.api.Result;
 import com.virgo.service.IVoucherOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;

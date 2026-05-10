@@ -1,13 +1,13 @@
 package com.virgo.service;
 
-import com.virgo.entity.Shop;
+import com.virgo.domain.po.Shop;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
 
 /**
  * <p>
- * 服务类
+ * 服务�?
  * </p>
  *
  * @author 虎哥

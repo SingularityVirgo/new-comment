@@ -1,6 +1,6 @@
 package com.virgo.service.impl;
 
-import com.virgo.entity.SeckillVoucher;
+import com.virgo.domain.po.SeckillVoucher;
 import com.virgo.mapper.SeckillVoucherMapper;
 import com.virgo.service.ISeckillVoucherService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * <p>
- * 秒杀优惠券表，与优惠券是一对一关系 服务实现类
+ * 秒杀优惠券表，与优惠券是一对一关系 服务实现�?
  * </p>
  *
  * @author 虎哥
