@@ -127,5 +127,20 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         return page.getRecords();
     }
+
+    @Override
+    public void removeShop(Long id) {
+        Shop shop = getById(id);
+        if (shop == null) {
+            throw new BizException("店铺不存在！");
+        }
+        if (shop.getTypeId() != null) {
+            stringRedisTemplate.opsForGeo().remove(SHOP_GEO_KEY + shop.getTypeId(), shop.getId().toString());
+        }
+        stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
+        if (!removeById(id)) {
+            throw new BizException("删除店铺失败");
+        }
+    }
 }
 

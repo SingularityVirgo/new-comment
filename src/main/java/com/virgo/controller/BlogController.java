@@ -4,6 +4,7 @@ import com.virgo.dto.Result;
 import com.virgo.entity.Blog;
 import com.virgo.service.IBlogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +24,18 @@ public class BlogController {
     @PostMapping
     public Result<?> saveBlog(@RequestBody Blog blog) {
         return Result.ok(blogService.saveBlog(blog));
+    }
+
+    @PutMapping
+    public Result<?> updateBlog(@RequestBody Blog blog) {
+        blogService.updateMyBlog(blog);
+        return Result.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<?> deleteBlog(@PathVariable("id") Long id) {
+        blogService.removeMyBlog(id);
+        return Result.ok();
     }
 
     @PutMapping("/like/{id}")

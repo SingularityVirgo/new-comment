@@ -32,4 +32,8 @@ public interface IBlogService extends IService<Blog> {
     List<Blog> pageBlogsForCurrentUser(Integer current);
 
     List<Blog> pageBlogsForUser(Long userId, Integer current);
+
+    void updateMyBlog(Blog blog);
+
+    void removeMyBlog(Long id);
 }

@@ -4,6 +4,7 @@ import com.virgo.dto.Result;
 import com.virgo.entity.Shop;
 import com.virgo.service.IShopService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +35,12 @@ public class ShopController {
     @PutMapping
     public Result<?> updateShop(@RequestBody Shop shop) {
         shopService.updateShop(shop);
+        return Result.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<?> removeShop(@PathVariable("id") Long id) {
+        shopService.removeShop(id);
         return Result.ok();
     }
 

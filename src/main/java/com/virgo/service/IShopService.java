@@ -22,4 +22,6 @@ public interface IShopService extends IService<Shop> {
     List<Shop> queryShopByType(Integer typeId, Integer current, Double x, Double y);
 
     List<Shop> queryShopByName(String name, Integer current);
+
+    void removeShop(Long id);
 }

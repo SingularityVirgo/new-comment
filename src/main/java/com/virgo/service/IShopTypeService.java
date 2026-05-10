@@ -16,4 +16,10 @@ import java.util.List;
 public interface IShopTypeService extends IService<ShopType> {
 
     List<ShopType> queryTypeList();
+
+    Long saveShopType(ShopType shopType);
+
+    void updateShopType(ShopType shopType);
+
+    void removeShopType(Long id);
 }

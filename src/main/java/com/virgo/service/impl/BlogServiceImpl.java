@@ -2,14 +2,18 @@ package com.virgo.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.virgo.common.exception.BizException;
 import com.virgo.dto.ScrollResult;
 import com.virgo.dto.UserDTO;
 import com.virgo.entity.Blog;
+import com.virgo.entity.BlogComments;
 import com.virgo.entity.Follow;
 import com.virgo.entity.User;
+import com.virgo.mapper.BlogCommentsMapper;
 import com.virgo.mapper.BlogMapper;
 import com.virgo.service.IBlogService;
 import com.virgo.service.IFollowService;
@@ -37,6 +41,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     private final IUserService userService;
     private final StringRedisTemplate stringRedisTemplate;
     private final IFollowService followService;
+    private final BlogCommentsMapper blogCommentsMapper;
 
     @Override
     public List<Blog> queryHotBlog(Integer current) {
@@ -176,6 +181,61 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
                 .eq("user_id", userId)
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         return page.getRecords();
+    }
+
+    @Override
+    public void updateMyBlog(Blog blog) {
+        if (blog.getId() == null) {
+            throw new BizException("笔记id不能为空");
+        }
+        Long uid = UserHolder.getUser().getId();
+        Blog existing = getById(blog.getId());
+        if (existing == null) {
+            throw new BizException("笔记不存在！");
+        }
+        if (!uid.equals(existing.getUserId())) {
+            throw new BizException("无权修改该笔记");
+        }
+        LambdaUpdateWrapper<Blog> w = new LambdaUpdateWrapper<Blog>()
+                .eq(Blog::getId, blog.getId())
+                .eq(Blog::getUserId, uid);
+        if (blog.getShopId() != null) {
+            w.set(Blog::getShopId, blog.getShopId());
+        }
+        if (StrUtil.isNotBlank(blog.getTitle())) {
+            w.set(Blog::getTitle, blog.getTitle());
+        }
+        if (StrUtil.isNotBlank(blog.getImages())) {
+            w.set(Blog::getImages, blog.getImages());
+        }
+        if (StrUtil.isNotBlank(blog.getContent())) {
+            w.set(Blog::getContent, blog.getContent());
+        }
+        if (!update(w)) {
+            throw new BizException("更新笔记失败");
+        }
+    }
+
+    @Override
+    public void removeMyBlog(Long id) {
+        Long uid = UserHolder.getUser().getId();
+        Blog existing = getById(id);
+        if (existing == null) {
+            throw new BizException("笔记不存在！");
+        }
+        if (!uid.equals(existing.getUserId())) {
+            throw new BizException("无权删除该笔记");
+        }
+        blogCommentsMapper.delete(new LambdaQueryWrapper<BlogComments>().eq(BlogComments::getBlogId, id));
+        List<Follow> follows = followService.query().eq("follow_user_id", existing.getUserId()).list();
+        for (Follow follow : follows) {
+            String key = FEED_KEY + follow.getUserId();
+            stringRedisTemplate.opsForZSet().remove(key, id.toString());
+        }
+        stringRedisTemplate.delete(BLOG_LIKED_KEY + id);
+        if (!removeById(id)) {
+            throw new BizException("删除笔记失败");
+        }
     }
 
     private void queryBlogUser(Blog blog) {

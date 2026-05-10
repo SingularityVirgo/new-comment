@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { assetUrl, request } from '../api/request';
-import type { Blog, UserDTO } from '../api/types';
+import { assetUrl, request, requestJson } from '../api/request';
+import type { Blog, BlogComment, UserDTO } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 
 export function BlogDetail() {
@@ -11,6 +11,14 @@ export function BlogDetail() {
   const [blog, setBlog] = useState<Blog | null>(null);
   const [err, setErr] = useState('');
   const [likers, setLikers] = useState<UserDTO[] | null>(null);
+  const [comments, setComments] = useState<BlogComment[]>([]);
+  const [commentMsg, setCommentMsg] = useState('');
+  const [newComment, setNewComment] = useState('');
+
+  async function loadComments(blogId: string) {
+    const r = await request<BlogComment[]>(`/blog-comments/of-blog/${blogId}`);
+    if (r.success && Array.isArray(r.data)) setComments(r.data);
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -22,6 +30,7 @@ export function BlogDetail() {
       else {
         setErr('');
         setBlog(r.data ?? null);
+        void loadComments(id);
       }
     })();
     return () => {
@@ -47,6 +56,42 @@ export function BlogDetail() {
     if (!id) return;
     const r = await request<UserDTO[]>(`/blog/likes/${id}`);
     if (r.success) setLikers((r.data as UserDTO[]) || []);
+  }
+
+  async function submitComment() {
+    if (!user || !id) {
+      nav('/login', { state: { from: `/blog/${id}` } });
+      return;
+    }
+    const text = newComment.trim();
+    if (!text) return;
+    setCommentMsg('');
+    const r = await requestJson<number>('/blog-comments', {
+      blogId: Number(id),
+      content: text,
+      parentId: 0,
+      answerId: 0,
+    });
+    if (!r.success) {
+      setCommentMsg(r.errorMsg || '评论失败');
+      return;
+    }
+    setNewComment('');
+    const detail = await request<Blog>(`/blog/${id}`);
+    if (detail.success && detail.data) setBlog(detail.data);
+    await loadComments(id);
+  }
+
+  async function deleteComment(commentId: number) {
+    if (!id) return;
+    const r = await request(`/blog-comments/${commentId}`, { method: 'DELETE' });
+    if (!r.success) {
+      alert(r.errorMsg || '删除失败');
+      return;
+    }
+    const detail = await request<Blog>(`/blog/${id}`);
+    if (detail.success && detail.data) setBlog(detail.data);
+    await loadComments(id);
   }
 
   if (err) return <div className="error-banner">{err}</div>;
@@ -121,6 +166,41 @@ export function BlogDetail() {
             </button>
           </div>
         )}
+
+        <div style={{ marginTop: 28, borderTop: '1px solid var(--stroke)', paddingTop: 20 }}>
+          <div style={{ fontWeight: 600, marginBottom: 12 }}>评论 · {blog.comments ?? comments.length}</div>
+          {commentMsg && <div className="error-banner" style={{ marginBottom: 10 }}>{commentMsg}</div>}
+          <div className="row" style={{ alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+            <textarea
+              className="input"
+              style={{ flex: 1, minWidth: 200, minHeight: 72, resize: 'vertical' }}
+              placeholder={user ? '写一条评论…' : '登录后发表评论'}
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              disabled={!user}
+            />
+            <button type="button" className="btn btn-primary" disabled={!user} onClick={() => void submitComment()}>
+              发送
+            </button>
+          </div>
+          <ul style={{ listStyle: 'none', padding: 0, margin: '18px 0 0' }}>
+            {comments.length === 0 && <li className="muted">暂无评论</li>}
+            {comments.map((c) => (
+              <li key={c.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--stroke)' }}>
+                <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 6 }}>
+                  <img className="avatar" src={assetUrl(c.icon)} alt="" width={36} height={36} />
+                  <span style={{ fontWeight: 600 }}>{c.name || `用户${c.userId}`}</span>
+                  {user && user.id === c.userId && (
+                    <button type="button" className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => void deleteComment(c.id)}>
+                      删除
+                    </button>
+                  )}
+                </div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{c.content}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </article>
   );

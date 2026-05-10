@@ -1,16 +1,17 @@
 package com.virgo.service;
 
-import com.virgo.entity.BlogComments;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.virgo.entity.BlogComments;
 
-/**
- * <p>
- *  服务类
- * </p>
- *
- * @author 虎哥
- * @since 2021-12-22
- */
+import java.util.List;
+
 public interface IBlogCommentsService extends IService<BlogComments> {
 
+    Long addComment(BlogComments comment);
+
+    List<BlogComments> pageForBlog(Long blogId, Integer current);
+
+    void updateMyComment(Long id, String content);
+
+    void removeMyComment(Long id);
 }

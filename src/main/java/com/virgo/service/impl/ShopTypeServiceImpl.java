@@ -41,4 +41,35 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
         stringRedisTemplate.opsForValue().set(CACHE_SHOP_TYPE_KEY, JSONUtil.toJsonStr(typeList));
         return typeList;
     }
+
+    @Override
+    public Long saveShopType(ShopType shopType) {
+        if (!save(shopType)) {
+            throw new BizException("新增店铺类型失败");
+        }
+        stringRedisTemplate.delete(CACHE_SHOP_TYPE_KEY);
+        return shopType.getId();
+    }
+
+    @Override
+    public void updateShopType(ShopType shopType) {
+        if (shopType.getId() == null) {
+            throw new BizException("类型id不能为空");
+        }
+        if (!updateById(shopType)) {
+            throw new BizException("更新店铺类型失败");
+        }
+        stringRedisTemplate.delete(CACHE_SHOP_TYPE_KEY);
+    }
+
+    @Override
+    public void removeShopType(Long id) {
+        if (getById(id) == null) {
+            throw new BizException("店铺类型不存在");
+        }
+        if (!removeById(id)) {
+            throw new BizException("删除店铺类型失败");
+        }
+        stringRedisTemplate.delete(CACHE_SHOP_TYPE_KEY);
+    }
 }

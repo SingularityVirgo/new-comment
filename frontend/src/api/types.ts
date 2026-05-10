@@ -4,6 +4,21 @@ export interface UserDTO {
   icon: string;
 }
 
+export interface BlogComment {
+  id: number;
+  userId: number;
+  blogId: number;
+  parentId: number;
+  answerId: number;
+  content: string;
+  liked?: number;
+  status?: boolean;
+  createTime?: string;
+  updateTime?: string;
+  name?: string;
+  icon?: string;
+}
+
 export interface Blog {
   id: number;
   shopId: number;
