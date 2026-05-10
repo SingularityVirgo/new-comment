@@ -1,19 +1,126 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { apiBase, requestJson } from '../api/request';
-import type { Blog } from '../api/types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { apiBase, request, requestJson } from '../api/request';
+import type { Blog, Shop } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 
 export function Publish() {
   const { user } = useAuth();
   const nav = useNavigate();
-  const [shopId, setShopId] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paramShopId = searchParams.get('shopId');
+
+  const [shopName, setShopName] = useState('');
+  const [shopLoadErr, setShopLoadErr] = useState('');
+  const [shopLoading, setShopLoading] = useState(false);
+
+  const [nameQuery, setNameQuery] = useState('');
+  const [searchHits, setSearchHits] = useState<Shop[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!paramShopId) {
+      setShopName('');
+      setShopLoadErr('');
+      setShopLoading(false);
+      return;
+    }
+    const sid = Number(paramShopId);
+    if (!Number.isFinite(sid) || sid <= 0) {
+      setShopName('');
+      setShopLoadErr('链接中的店铺 ID 无效');
+      setShopLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setShopLoading(true);
+    setShopLoadErr('');
+    void (async () => {
+      const r = await request<Shop>(`/shop/${sid}`);
+      if (cancelled) return;
+      setShopLoading(false);
+      if (r.success && r.data) {
+        setShopName(r.data.name);
+        setShopLoadErr('');
+      } else {
+        setShopName('');
+        setShopLoadErr(r.errorMsg || '未找到该店铺');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [paramShopId]);
+
+  const pickShop = useCallback(
+    (shop: Shop) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('shopId', String(shop.id));
+          return next;
+        },
+        { replace: true },
+      );
+      setShopName(shop.name);
+      setShopLoadErr('');
+      setNameQuery('');
+      setSearchHits([]);
+      setSearchOpen(false);
+    },
+    [setSearchParams],
+  );
+
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    const q = nameQuery.trim();
+    if (q.length < 1) {
+      setSearchHits([]);
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    searchDebounceRef.current = setTimeout(() => {
+      void (async () => {
+        const r = await request<Shop[]>('/shop/of/name', { params: { name: q, current: 1 } });
+        setSearchLoading(false);
+        if (!r.success) {
+          setSearchHits([]);
+          return;
+        }
+        setSearchHits((r.data as Shop[]) || []);
+      })();
+    }, 300);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [nameQuery]);
+
+  function clearShop() {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('shopId');
+        return next;
+      },
+      { replace: true },
+    );
+    setShopName('');
+    setShopLoadErr('');
+    setNameQuery('');
+    setSearchHits([]);
+    setSearchOpen(false);
+  }
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -38,9 +145,9 @@ export function Publish() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setMsg('');
-    const sid = Number(shopId);
+    const sid = paramShopId ? Number(paramShopId) : NaN;
     if (!Number.isFinite(sid) || sid <= 0) {
-      setMsg('请填写有效的店铺 ID');
+      setMsg('请先选择关联店铺（搜索店名或从商铺页进入）');
       return;
     }
     setSubmitting(true);
@@ -58,19 +165,109 @@ export function Publish() {
 
   if (!user) return null;
 
+  const hasShop = paramShopId && Number(paramShopId) > 0 && Number.isFinite(Number(paramShopId));
+
   return (
     <>
       <header className="page-head">
         <h1 className="page-title">发布探店</h1>
-        <p className="page-lead">写好标题与正文，配图上传后由后端写入相对路径。</p>
+        <p className="page-lead">选好店铺、写好标题与正文，配图上传后由后端写入相对路径。</p>
       </header>
       <div className="card">
         <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>笔记表单</h2>
         {msg && <div className="error-banner">{msg}</div>}
         <form onSubmit={(e) => void submit(e)}>
           <div className="field">
-            <label>店铺 ID</label>
-            <input className="input" value={shopId} onChange={(e) => setShopId(e.target.value)} placeholder="数字，可在商铺页查看" />
+            <label>关联店铺</label>
+            {hasShop && (
+              <div
+                className="card"
+                style={{
+                  marginBottom: 10,
+                  padding: '12px 14px',
+                  background: 'var(--surface-2, rgba(0,0,0,0.04))',
+                  border: '1px solid var(--border, rgba(0,0,0,0.08))',
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>
+                  {shopLoading && !shopName ? '加载店铺信息…' : shopName || '—'}
+                </div>
+                <div className="muted" style={{ marginTop: 6, fontSize: '0.9rem' }}>
+                  店铺 ID {paramShopId}
+                  {shopLoadErr && <span style={{ color: 'var(--danger, #c00)', marginLeft: 8 }}>{shopLoadErr}</span>}
+                </div>
+                <button type="button" className="btn btn-ghost" style={{ marginTop: 10 }} onClick={() => clearShop()}>
+                  更换店铺
+                </button>
+              </div>
+            )}
+            <input
+              className="input"
+              value={nameQuery}
+              onChange={(e) => {
+                setNameQuery(e.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => {
+                window.setTimeout(() => setSearchOpen(false), 180);
+              }}
+              placeholder={hasShop ? '搜索其他店名以切换…' : '输入店名搜索并选择'}
+              autoComplete="off"
+            />
+            {searchOpen && nameQuery.trim().length >= 1 && (
+              <div
+                className="card"
+                style={{
+                  marginTop: 8,
+                  maxHeight: 240,
+                  overflowY: 'auto',
+                  padding: 0,
+                  border: '1px solid var(--border, rgba(0,0,0,0.08))',
+                }}
+              >
+                {searchLoading && (
+                  <div className="muted" style={{ padding: 12 }}>
+                    搜索中…
+                  </div>
+                )}
+                {!searchLoading && searchHits.length === 0 && (
+                  <div className="muted" style={{ padding: 12 }}>
+                    无匹配店铺，换个关键词试试
+                  </div>
+                )}
+                {!searchLoading &&
+                  searchHits.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => pickShop(s)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 14px',
+                        border: 'none',
+                        borderBottom: '1px solid var(--border, rgba(0,0,0,0.06))',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        color: 'inherit',
+                        font: 'inherit',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600 }}>{s.name}</div>
+                      <div className="muted" style={{ fontSize: '0.85rem', marginTop: 2 }}>
+                        {s.area} · ID {s.id}
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            )}
+            <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
+              也可在{' '}
+              <Link to="/shops">商铺列表</Link> 进入店铺页，点击「在此店发笔记」自动带上店铺。
+            </p>
           </div>
           <div className="field">
             <label>标题</label>

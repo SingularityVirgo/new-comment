@@ -89,6 +89,17 @@ export function ShopDetail() {
           <span className="pill">人均 ￥{shop.avgPrice ?? '—'}</span>
           <span className="pill">营业时间 {shop.openHours ?? '—'}</span>
         </div>
+        <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {user ? (
+            <Link to={`/publish?shopId=${shop.id}`} className="btn btn-primary">
+              在此店发笔记
+            </Link>
+          ) : (
+            <Link to="/login" state={{ from: `/publish?shopId=${shop.id}` }} className="btn btn-primary">
+              登录后发笔记
+            </Link>
+          )}
+        </div>
       </div>
 
       {imgs.length > 0 && (
