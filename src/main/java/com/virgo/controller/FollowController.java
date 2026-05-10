@@ -1,7 +1,8 @@
 package com.virgo.controller;
 
-import com.virgo.dto.Result;
+import com.virgo.web.api.Result;
 import com.virgo.service.IFollowService;
+import com.virgo.web.assembly.WebModels;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +30,11 @@ public class FollowController {
 
     @GetMapping("/common/{id}")
     public Result<?> followCommons(@PathVariable("id") Long id) {
-        return Result.ok(followService.followCommons(id));
+        return Result.ok(WebModels.toMutualFollowUserVos(followService.followCommons(id)));
+    }
+
+    @GetMapping("/following/{id}")
+    public Result<?> following(@PathVariable("id") Long id) {
+        return Result.ok(WebModels.toFollowingUserVos(followService.listFollowing(id)));
     }
 }

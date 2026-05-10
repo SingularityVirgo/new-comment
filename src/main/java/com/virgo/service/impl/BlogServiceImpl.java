@@ -7,12 +7,16 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.virgo.common.exception.BizException;
-import com.virgo.dto.ScrollResult;
-import com.virgo.dto.UserDTO;
-import com.virgo.entity.Blog;
-import com.virgo.entity.BlogComments;
-import com.virgo.entity.Follow;
-import com.virgo.entity.User;
+import com.virgo.domain.dto.auth.CurrentUser;
+import com.virgo.domain.dto.blog.BlogFeedDto;
+import com.virgo.domain.dto.blog.BlogFollowScrollDto;
+import com.virgo.domain.dto.blog.BlogLikeUserDto;
+import com.virgo.domain.dto.blog.BlogSaveCommand;
+import com.virgo.domain.dto.blog.BlogUpdateCommand;
+import com.virgo.domain.po.Blog;
+import com.virgo.domain.po.BlogComments;
+import com.virgo.domain.po.Follow;
+import com.virgo.domain.po.User;
 import com.virgo.mapper.BlogCommentsMapper;
 import com.virgo.mapper.BlogMapper;
 import com.virgo.service.IBlogService;
@@ -44,31 +48,27 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     private final BlogCommentsMapper blogCommentsMapper;
 
     @Override
-    public List<Blog> queryHotBlog(Integer current) {
+    public List<BlogFeedDto> queryHotBlog(Integer current) {
         Page<Blog> page = query()
                 .orderByDesc("liked")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         List<Blog> records = page.getRecords();
-        records.forEach(blog -> {
-            queryBlogUser(blog);
-            isBlogLiked(blog);
-        });
-        return records;
+        records.forEach(this::enrichBlog);
+        return records.stream().map(this::toFeedDto).collect(Collectors.toList());
     }
 
     @Override
-    public Blog queryBlogById(Long id) {
+    public BlogFeedDto queryBlogById(Long id) {
         Blog blog = getById(id);
         if (blog == null) {
-            throw new BizException("笔记不存在！");
+            throw new BizException("\u7b14\u8bb0\u4e0d\u5b58\u5728\uff01");
         }
-        queryBlogUser(blog);
-        isBlogLiked(blog);
-        return blog;
+        enrichBlog(blog);
+        return toFeedDto(blog);
     }
 
     private void isBlogLiked(Blog blog) {
-        UserDTO user = UserHolder.getUser();
+        CurrentUser user = UserHolder.getUser();
         if (user == null) {
             return;
         }
@@ -96,7 +96,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     }
 
     @Override
-    public List<UserDTO> queryBlogLikes(Long id) {
+    public List<BlogLikeUserDto> queryBlogLikes(Long id) {
         String key = BLOG_LIKED_KEY + id;
         Set<String> top5 = stringRedisTemplate.opsForZSet().range(key, 0, 4);
         if (top5 == null || top5.isEmpty()) {
@@ -107,16 +107,21 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         return userService.query()
                 .in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list()
                 .stream()
-                .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
+                .map(user -> BeanUtil.copyProperties(user, BlogLikeUserDto.class))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public Long saveBlog(Blog blog) {
-        UserDTO user = UserHolder.getUser();
+    public Long saveBlog(BlogSaveCommand command) {
+        CurrentUser user = UserHolder.getUser();
+        Blog blog = new Blog();
+        blog.setShopId(command.getShopId());
+        blog.setTitle(command.getTitle());
+        blog.setImages(command.getImages());
+        blog.setContent(command.getContent());
         blog.setUserId(user.getId());
         if (!save(blog)) {
-            throw new BizException("新增笔记失败!");
+            throw new BizException("\u65b0\u589e\u7b14\u8bb0\u5931\u8d25\uff01");
         }
         List<Follow> follows = followService.query().eq("follow_user_id", user.getId()).list();
         for (Follow follow : follows) {
@@ -128,13 +133,13 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     }
 
     @Override
-    public ScrollResult queryBlogOfFollow(Long max, Integer offset) {
+    public BlogFollowScrollDto queryBlogOfFollow(Long max, Integer offset) {
         Long userId = UserHolder.getUser().getId();
         String key = FEED_KEY + userId;
         Set<ZSetOperations.TypedTuple<String>> typedTuples = stringRedisTemplate.opsForZSet()
                 .reverseRangeByScoreWithScores(key, 0, max, offset, 2);
         if (typedTuples == null || typedTuples.isEmpty()) {
-            ScrollResult empty = new ScrollResult();
+            BlogFollowScrollDto empty = new BlogFollowScrollDto();
             empty.setList(Collections.emptyList());
             empty.setMinTime(0L);
             empty.setOffset(0);
@@ -156,63 +161,66 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         String idStr = StrUtil.join(",", ids);
         List<Blog> blogs = query().in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list();
         for (Blog b : blogs) {
-            queryBlogUser(b);
-            isBlogLiked(b);
+            enrichBlog(b);
         }
-        ScrollResult scrollResult = new ScrollResult();
-        scrollResult.setList(blogs);
+        BlogFollowScrollDto scrollResult = new BlogFollowScrollDto();
+        scrollResult.setList(blogs.stream().map(this::toFeedDto).collect(Collectors.toList()));
         scrollResult.setOffset(os);
         scrollResult.setMinTime(minTime);
         return scrollResult;
     }
 
     @Override
-    public List<Blog> pageBlogsForCurrentUser(Integer current) {
-        UserDTO user = UserHolder.getUser();
+    public List<BlogFeedDto> pageBlogsForCurrentUser(Integer current) {
+        CurrentUser user = UserHolder.getUser();
         Page<Blog> page = query()
                 .eq("user_id", user.getId())
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
-        return page.getRecords();
+        List<Blog> records = page.getRecords();
+        records.forEach(this::queryBlogUser);
+        return records.stream().map(this::toFeedDto).collect(Collectors.toList());
     }
 
     @Override
-    public List<Blog> pageBlogsForUser(Long userId, Integer current) {
+    public List<BlogFeedDto> pageBlogsForUser(Long userId, Integer current) {
         Page<Blog> page = query()
                 .eq("user_id", userId)
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
-        return page.getRecords();
+        List<Blog> records = page.getRecords();
+        records.forEach(this::queryBlogUser);
+        return records.stream().map(this::toFeedDto).collect(Collectors.toList());
     }
 
     @Override
-    public void updateMyBlog(Blog blog) {
-        if (blog.getId() == null) {
-            throw new BizException("笔记id不能为空");
+    public void updateMyBlog(BlogUpdateCommand command) {
+        if (command.getId() == null) {
+            throw new BizException("\u7b14\u8bb0id\u4e0d\u80fd\u4e3a\u7a7a");
         }
         Long uid = UserHolder.getUser().getId();
-        Blog existing = getById(blog.getId());
+        Blog existing = getById(command.getId());
         if (existing == null) {
-            throw new BizException("笔记不存在！");
+            throw new BizException("\u7b14\u8bb0\u4e0d\u5b58\u5728\uff01");
         }
         if (!uid.equals(existing.getUserId())) {
-            throw new BizException("无权修改该笔记");
+            throw new BizException("\u65e0\u6743\u4fee\u6539\u8be5\u7b14\u8bb0");
         }
         LambdaUpdateWrapper<Blog> w = new LambdaUpdateWrapper<Blog>()
-                .eq(Blog::getId, blog.getId())
+                .eq(Blog::getId, command.getId())
                 .eq(Blog::getUserId, uid);
-        if (blog.getShopId() != null) {
-            w.set(Blog::getShopId, blog.getShopId());
+        if (command.getShopId() != null) {
+            w.set(Blog::getShopId, command.getShopId());
         }
-        if (StrUtil.isNotBlank(blog.getTitle())) {
-            w.set(Blog::getTitle, blog.getTitle());
+        if (StrUtil.isNotBlank(command.getTitle())) {
+            w.set(Blog::getTitle, command.getTitle());
         }
-        if (StrUtil.isNotBlank(blog.getImages())) {
-            w.set(Blog::getImages, blog.getImages());
+        if (StrUtil.isNotBlank(command.getImages())) {
+            w.set(Blog::getImages, command.getImages());
         }
-        if (StrUtil.isNotBlank(blog.getContent())) {
-            w.set(Blog::getContent, blog.getContent());
+        if (StrUtil.isNotBlank(command.getContent())) {
+            w.set(Blog::getContent, command.getContent());
         }
         if (!update(w)) {
-            throw new BizException("更新笔记失败");
+            throw new BizException("\u66f4\u65b0\u7b14\u8bb0\u5931\u8d25");
         }
     }
 
@@ -221,10 +229,10 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         Long uid = UserHolder.getUser().getId();
         Blog existing = getById(id);
         if (existing == null) {
-            throw new BizException("笔记不存在！");
+            throw new BizException("\u7b14\u8bb0\u4e0d\u5b58\u5728\uff01");
         }
         if (!uid.equals(existing.getUserId())) {
-            throw new BizException("无权删除该笔记");
+            throw new BizException("\u65e0\u6743\u5220\u9664\u8be5\u7b14\u8bb0");
         }
         blogCommentsMapper.delete(new LambdaQueryWrapper<BlogComments>().eq(BlogComments::getBlogId, id));
         List<Follow> follows = followService.query().eq("follow_user_id", existing.getUserId()).list();
@@ -234,8 +242,13 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         }
         stringRedisTemplate.delete(BLOG_LIKED_KEY + id);
         if (!removeById(id)) {
-            throw new BizException("删除笔记失败");
+            throw new BizException("\u5220\u9664\u7b14\u8bb0\u5931\u8d25");
         }
+    }
+
+    private void enrichBlog(Blog blog) {
+        queryBlogUser(blog);
+        isBlogLiked(blog);
     }
 
     private void queryBlogUser(Blog blog) {
@@ -243,5 +256,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         User user = userService.getById(uid);
         blog.setName(user.getNickName());
         blog.setIcon(user.getIcon());
+    }
+
+    private BlogFeedDto toFeedDto(Blog blog) {
+        return BeanUtil.copyProperties(blog, BlogFeedDto.class);
     }
 }

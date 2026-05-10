@@ -1,14 +1,17 @@
 package com.virgo.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.virgo.common.exception.BizException;
-import com.virgo.entity.Blog;
-import com.virgo.entity.BlogComments;
-import com.virgo.entity.User;
+import com.virgo.domain.dto.comment.BlogCommentItemDto;
+import com.virgo.domain.dto.comment.CommentCreateCommand;
+import com.virgo.domain.po.Blog;
+import com.virgo.domain.po.BlogComments;
+import com.virgo.domain.po.User;
 import com.virgo.mapper.BlogCommentsMapper;
 import com.virgo.service.IBlogCommentsService;
 import com.virgo.service.IBlogService;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,42 +34,37 @@ public class BlogCommentsServiceImpl extends ServiceImpl<BlogCommentsMapper, Blo
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long addComment(BlogComments comment) {
-        if (comment.getBlogId() == null) {
-            throw new BizException("笔记id不能为空");
+    public Long addComment(CommentCreateCommand command) {
+        if (command.getBlogId() == null) {
+            throw new BizException("\u7b14\u8bb0id\u4e0d\u80fd\u4e3a\u7a7a");
         }
-        if (StrUtil.isBlank(comment.getContent())) {
-            throw new BizException("评论内容不能为空");
+        if (StrUtil.isBlank(command.getContent())) {
+            throw new BizException("\u8bc4\u8bba\u5185\u5bb9\u4e0d\u80fd\u4e3a\u7a7a");
         }
-        Blog blog = blogService.getById(comment.getBlogId());
+        Blog blog = blogService.getById(command.getBlogId());
         if (blog == null) {
-            throw new BizException("笔记不存在");
+            throw new BizException("\u7b14\u8bb0\u4e0d\u5b58\u5728");
         }
         Long uid = UserHolder.getUser().getId();
+        BlogComments comment = new BlogComments();
+        comment.setBlogId(command.getBlogId());
+        comment.setContent(command.getContent().trim());
         comment.setUserId(uid);
-        if (comment.getParentId() == null) {
-            comment.setParentId(0L);
-        }
-        if (comment.getAnswerId() == null) {
-            comment.setAnswerId(0L);
-        }
-        if (comment.getLiked() == null) {
-            comment.setLiked(0);
-        }
-        if (comment.getStatus() == null) {
-            comment.setStatus(false);
-        }
+        comment.setParentId(command.getParentId() != null ? command.getParentId() : 0L);
+        comment.setAnswerId(command.getAnswerId() != null ? command.getAnswerId() : 0L);
+        comment.setLiked(0);
+        comment.setStatus(false);
         if (!save(comment)) {
-            throw new BizException("发表评论失败");
+            throw new BizException("\u53d1\u8868\u8bc4\u8bba\u5931\u8d25");
         }
         blogService.update().setSql("comments = IFNULL(comments,0) + 1").eq("id", comment.getBlogId()).update();
         return comment.getId();
     }
 
     @Override
-    public List<BlogComments> pageForBlog(Long blogId, Integer current) {
+    public List<BlogCommentItemDto> pageForBlog(Long blogId, Integer current) {
         if (blogService.getById(blogId) == null) {
-            throw new BizException("笔记不存在");
+            throw new BizException("\u7b14\u8bb0\u4e0d\u5b58\u5728");
         }
         LambdaQueryWrapper<BlogComments> q = new LambdaQueryWrapper<BlogComments>()
                 .eq(BlogComments::getBlogId, blogId)
@@ -73,34 +72,35 @@ public class BlogCommentsServiceImpl extends ServiceImpl<BlogCommentsMapper, Blo
                 .orderByAsc(BlogComments::getId);
         Page<BlogComments> page = page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE), q);
         List<BlogComments> records = page.getRecords();
-        for (BlogComments c : records) {
+        return records.stream().map(c -> {
+            BlogCommentItemDto dto = BeanUtil.copyProperties(c, BlogCommentItemDto.class);
             User u = userService.getById(c.getUserId());
             if (u != null) {
-                c.setName(u.getNickName());
-                c.setIcon(u.getIcon());
+                dto.setName(u.getNickName());
+                dto.setIcon(u.getIcon());
             }
-        }
-        return records;
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateMyComment(Long id, String content) {
         if (StrUtil.isBlank(content)) {
-            throw new BizException("评论内容不能为空");
+            throw new BizException("\u8bc4\u8bba\u5185\u5bb9\u4e0d\u80fd\u4e3a\u7a7a");
         }
         BlogComments existing = getById(id);
         if (existing == null) {
-            throw new BizException("评论不存在");
+            throw new BizException("\u8bc4\u8bba\u4e0d\u5b58\u5728");
         }
         if (!UserHolder.getUser().getId().equals(existing.getUserId())) {
-            throw new BizException("无权修改该评论");
+            throw new BizException("\u65e0\u6743\u4fee\u6539\u8be5\u8bc4\u8bba");
         }
         boolean ok = update(new LambdaUpdateWrapper<BlogComments>()
                 .eq(BlogComments::getId, id)
                 .set(BlogComments::getContent, content.trim()));
         if (!ok) {
-            throw new BizException("更新评论失败");
+            throw new BizException("\u66f4\u65b0\u8bc4\u8bba\u5931\u8d25");
         }
     }
 
@@ -109,13 +109,13 @@ public class BlogCommentsServiceImpl extends ServiceImpl<BlogCommentsMapper, Blo
     public void removeMyComment(Long id) {
         BlogComments existing = getById(id);
         if (existing == null) {
-            throw new BizException("评论不存在");
+            throw new BizException("\u8bc4\u8bba\u4e0d\u5b58\u5728");
         }
         if (!UserHolder.getUser().getId().equals(existing.getUserId())) {
-            throw new BizException("无权删除该评论");
+            throw new BizException("\u65e0\u6743\u5220\u9664\u8be5\u8bc4\u8bba");
         }
         if (!removeById(id)) {
-            throw new BizException("删除评论失败");
+            throw new BizException("\u5220\u9664\u8bc4\u8bba\u5931\u8d25");
         }
         blogService.update()
                 .setSql("comments = GREATEST(IFNULL(comments,0) - 1, 0)")

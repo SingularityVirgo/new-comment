@@ -6,9 +6,10 @@ import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.virgo.common.exception.BizException;
-import com.virgo.dto.LoginFormDTO;
-import com.virgo.dto.UserDTO;
-import com.virgo.entity.User;
+import com.virgo.domain.dto.auth.CurrentUser;
+import com.virgo.domain.dto.auth.LoginRequest;
+import com.virgo.domain.dto.user.UserProfileDto;
+import com.virgo.domain.po.User;
 import com.virgo.mapper.UserMapper;
 import com.virgo.service.IUserService;
 import com.virgo.utils.RegexUtils;
@@ -44,36 +45,36 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public void sendCode(String phone, HttpSession session) {
         if (RegexUtils.isPhoneInvalid(phone)) {
-            throw new BizException("手机号格式错误");
+            throw new BizException("\u624b\u673a\u53f7\u683c\u5f0f\u9519\u8bef");
         }
         String code = RandomUtil.randomNumbers(6);
         stringRedisTemplate.opsForValue().set(LOGIN_CODE_KEY + phone, code, LOGIN_CODE_TTL, TimeUnit.MINUTES);
-        log.debug("发送短信验证码成功，验证码：{}", code);
+        log.debug("\u53d1\u9001\u77ed\u4fe1\u9a8c\u8bc1\u7801\u6210\u529f\uff0c\u9a8c\u8bc1\u7801\uff1a{}", code);
     }
 
     @Override
-    public String login(LoginFormDTO loginForm, HttpSession session) {
-        String phone = loginForm.getPhone();
+    public String login(LoginRequest loginRequest, HttpSession session) {
+        String phone = loginRequest.getPhone();
         if (RegexUtils.isPhoneInvalid(phone)) {
-            throw new BizException("手机号格式错误");
+            throw new BizException("\u624b\u673a\u53f7\u683c\u5f0f\u9519\u8bef");
         }
         String catchCode = stringRedisTemplate.opsForValue().get(LOGIN_CODE_KEY + phone);
-        String code = loginForm.getCode();
+        String code = loginRequest.getCode();
         if (catchCode == null || !catchCode.equals(code)) {
-            throw new BizException("验证码错误");
+            throw new BizException("\u9a8c\u8bc1\u7801\u9519\u8bef");
         }
         User user = query().eq("phone", phone).one();
         if (user == null) {
             user = createUserWithPhone(phone);
         }
         String token = UUID.randomUUID().toString(true);
-        UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
+        CurrentUser currentUser = BeanUtil.copyProperties(user, CurrentUser.class);
         Map<String, Object> stringObjectMap = BeanUtil.beanToMap(
-                userDTO,
+                currentUser,
                 new HashMap<>(),
                 CopyOptions.create()
                         .setIgnoreNullValue(true)
-                        .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
+                        .setFieldValueEditor((fieldName, fieldValue) -> fieldValue == null ? null : fieldValue.toString()));
         stringRedisTemplate.opsForHash().putAll(LOGIN_USER_KEY + token, stringObjectMap);
         stringRedisTemplate.expire(LOGIN_USER_KEY + token, LOGIN_USER_TTL, TimeUnit.MINUTES);
         return token;
@@ -118,12 +119,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     @Override
-    public Optional<UserDTO> findUserDtoById(Long userId) {
+    public Optional<UserProfileDto> findUserProfile(Long userId) {
         User user = getById(userId);
         if (user == null) {
             return Optional.empty();
         }
-        return Optional.of(BeanUtil.copyProperties(user, UserDTO.class));
+        return Optional.of(BeanUtil.copyProperties(user, UserProfileDto.class));
     }
 
     private User createUserWithPhone(String phone) {

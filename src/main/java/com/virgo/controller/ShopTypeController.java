@@ -1,8 +1,11 @@
 package com.virgo.controller;
 
-import com.virgo.dto.Result;
-import com.virgo.entity.ShopType;
+import cn.hutool.core.bean.BeanUtil;
+import com.virgo.domain.dto.shoptype.ShopTypeWriteCommand;
+import com.virgo.domain.po.ShopType;
+import com.virgo.web.api.Result;
 import com.virgo.service.IShopTypeService;
+import com.virgo.web.assembly.WebModels;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,16 +25,18 @@ public class ShopTypeController {
 
     @GetMapping("list")
     public Result<?> queryTypeList() {
-        return Result.ok(typeService.queryTypeList());
+        return Result.ok(WebModels.toShopTypeVos(typeService.queryTypeList()));
     }
 
     @PostMapping
-    public Result<?> save(@RequestBody ShopType shopType) {
+    public Result<?> save(@RequestBody ShopTypeWriteCommand command) {
+        ShopType shopType = BeanUtil.copyProperties(command, ShopType.class);
         return Result.ok(typeService.saveShopType(shopType));
     }
 
     @PutMapping
-    public Result<?> update(@RequestBody ShopType shopType) {
+    public Result<?> update(@RequestBody ShopTypeWriteCommand command) {
+        ShopType shopType = BeanUtil.copyProperties(command, ShopType.class);
         typeService.updateShopType(shopType);
         return Result.ok();
     }

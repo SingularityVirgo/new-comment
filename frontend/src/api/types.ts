@@ -2,6 +2,8 @@ export interface UserDTO {
   id: number;
   nickName: string;
   icon: string;
+  /** 当前登录用户是否已关注该用户（由部分接口填充） */
+  isFollow?: boolean;
 }
 
 export interface BlogComment {

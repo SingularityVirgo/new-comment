@@ -6,6 +6,7 @@ import { BlogDetail } from './pages/BlogDetail';
 import { Discover } from './pages/Discover';
 import { FollowFeed } from './pages/FollowFeed';
 import { Login } from './pages/Login';
+import { MyFollowing } from './pages/MyFollowing';
 import { Profile } from './pages/Profile';
 import { Publish } from './pages/Publish';
 import { ShopDetail } from './pages/ShopDetail';
@@ -45,6 +46,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <Profile />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="profile/following"
+            element={
+              <RequireAuth>
+                <MyFollowing />
               </RequireAuth>
             }
           />

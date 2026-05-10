@@ -18,8 +18,8 @@ public class LoginInterceptor implements HandlerInterceptor {
         return true;
     }
 
-//    private UserDTO convertToDTO(User user) {
-//        UserDTO dto = new UserDTO();
+//    private CurrentUser convertToDTO(User user) {
+//        CurrentUser dto = new CurrentUser();
 //        // 复制需要的属性
 //        dto.setId(user.getId());
 //        dto.setNickName(user.getNickName());

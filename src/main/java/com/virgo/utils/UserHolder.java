@@ -1,15 +1,15 @@
 package com.virgo.utils;
 
-import com.virgo.dto.UserDTO;
+import com.virgo.domain.dto.auth.CurrentUser;
 
 public class UserHolder {
-    private static final ThreadLocal<UserDTO> tl = new ThreadLocal<>();
+    private static final ThreadLocal<CurrentUser> tl = new ThreadLocal<>();
 
-    public static void saveUser(UserDTO user){
+    public static void saveUser(CurrentUser user) {
         tl.set(user);
     }
 
-    public static UserDTO getUser(){
+    public static CurrentUser getUser() {
         return tl.get();
     }
 

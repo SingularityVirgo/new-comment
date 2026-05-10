@@ -1,39 +1,34 @@
 package com.virgo.service;
 
-import com.virgo.dto.ScrollResult;
-import com.virgo.dto.UserDTO;
-import com.virgo.entity.Blog;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.virgo.domain.dto.blog.BlogFeedDto;
+import com.virgo.domain.dto.blog.BlogFollowScrollDto;
+import com.virgo.domain.dto.blog.BlogLikeUserDto;
+import com.virgo.domain.dto.blog.BlogSaveCommand;
+import com.virgo.domain.dto.blog.BlogUpdateCommand;
+import com.virgo.domain.po.Blog;
 
 import java.util.List;
 
-/**
- * <p>
- * 服务类
- * </p>
- *
- * @author 虎哥
- * @since 2021-12-22
- */
 public interface IBlogService extends IService<Blog> {
 
-    List<Blog> queryHotBlog(Integer current);
+    List<BlogFeedDto> queryHotBlog(Integer current);
 
-    Blog queryBlogById(Long id);
+    BlogFeedDto queryBlogById(Long id);
 
     void likeBlog(Long id);
 
-    List<UserDTO> queryBlogLikes(Long id);
+    List<BlogLikeUserDto> queryBlogLikes(Long id);
 
-    Long saveBlog(Blog blog);
+    Long saveBlog(BlogSaveCommand command);
 
-    ScrollResult queryBlogOfFollow(Long max, Integer offset);
+    BlogFollowScrollDto queryBlogOfFollow(Long max, Integer offset);
 
-    List<Blog> pageBlogsForCurrentUser(Integer current);
+    List<BlogFeedDto> pageBlogsForCurrentUser(Integer current);
 
-    List<Blog> pageBlogsForUser(Long userId, Integer current);
+    List<BlogFeedDto> pageBlogsForUser(Long userId, Integer current);
 
-    void updateMyBlog(Blog blog);
+    void updateMyBlog(BlogUpdateCommand command);
 
     void removeMyBlog(Long id);
 }

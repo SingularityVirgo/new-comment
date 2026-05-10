@@ -1,20 +1,39 @@
 package com.virgo.service.impl;
 
-import com.virgo.entity.UserInfo;
+import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.virgo.domain.dto.userinfo.UserInfoPublicDto;
+import com.virgo.domain.dto.userinfo.UserInfoUpdateCommand;
+import com.virgo.domain.po.UserInfo;
 import com.virgo.mapper.UserInfoMapper;
 import com.virgo.service.IUserInfoService;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.virgo.utils.UserHolder;
 import org.springframework.stereotype.Service;
 
-/**
- * <p>
- *  服务实现类
- * </p>
- *
- * @author 虎哥
- * @since 2021-12-24
- */
+import java.util.Optional;
+
 @Service
 public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> implements IUserInfoService {
 
+    @Override
+    public Optional<UserInfoPublicDto> findPresentableInfo(Long userId) {
+        UserInfo info = getById(userId);
+        if (info == null) {
+            return Optional.empty();
+        }
+        UserInfoPublicDto dto = BeanUtil.copyProperties(info, UserInfoPublicDto.class);
+        return Optional.of(dto);
+    }
+
+    @Override
+    public void updateMyProfile(UserInfoUpdateCommand command) {
+        Long uid = UserHolder.getUser().getId();
+        UserInfo patch = new UserInfo();
+        patch.setUserId(uid);
+        patch.setCity(command.getCity());
+        patch.setIntroduce(command.getIntroduce());
+        patch.setGender(command.getGender());
+        patch.setBirthday(command.getBirthday());
+        saveOrUpdate(patch);
+    }
 }

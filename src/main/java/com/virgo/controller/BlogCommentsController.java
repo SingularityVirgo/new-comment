@@ -1,8 +1,9 @@
 package com.virgo.controller;
 
-import com.virgo.dto.Result;
-import com.virgo.entity.BlogComments;
+import com.virgo.domain.dto.comment.CommentCreateCommand;
+import com.virgo.web.api.Result;
 import com.virgo.service.IBlogCommentsService;
+import com.virgo.web.assembly.WebModels;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,15 +24,15 @@ public class BlogCommentsController {
     private final IBlogCommentsService blogCommentsService;
 
     @PostMapping
-    public Result<?> add(@RequestBody BlogComments comment) {
-        return Result.ok(blogCommentsService.addComment(comment));
+    public Result<?> add(@RequestBody CommentCreateCommand command) {
+        return Result.ok(blogCommentsService.addComment(command));
     }
 
     @GetMapping("/of-blog/{blogId}")
     public Result<?> pageByBlog(
             @PathVariable("blogId") Long blogId,
             @RequestParam(value = "current", defaultValue = "1") Integer current) {
-        return Result.ok(blogCommentsService.pageForBlog(blogId, current));
+        return Result.ok(WebModels.toBlogCommentVos(blogCommentsService.pageForBlog(blogId, current)));
     }
 
     @PutMapping("/{id}")

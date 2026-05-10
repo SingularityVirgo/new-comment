@@ -3,8 +3,8 @@ package com.virgo.service.impl;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.virgo.common.exception.BizException;
-import com.virgo.entity.SeckillVoucher;
-import com.virgo.entity.Voucher;
+import com.virgo.domain.po.SeckillVoucher;
+import com.virgo.domain.po.Voucher;
 import com.virgo.mapper.VoucherMapper;
 import com.virgo.service.ISeckillVoucherService;
 import com.virgo.service.IVoucherService;
@@ -17,14 +17,6 @@ import java.util.List;
 
 import static com.virgo.utils.RedisConstants.SECKILL_STOCK_KEY;
 
-/**
- * <p>
- * 服务实现类
- * </p>
- *
- * @author 虎哥
- * @since 2021-12-22
- */
 @Service
 public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> implements IVoucherService {
 
@@ -42,7 +34,7 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     public Voucher getVoucherDetail(Long id) {
         Voucher v = getBaseMapper().queryVoucherDetailById(id);
         if (v == null) {
-            throw new BizException("优惠券不存在");
+            throw new BizException("\u4f18\u60e0\u5238\u4e0d\u5b58\u5728");
         }
         return v;
     }
@@ -51,10 +43,10 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     @Transactional(rollbackFor = Exception.class)
     public void updateVoucher(Voucher voucher) {
         if (voucher.getId() == null) {
-            throw new BizException("优惠券id不能为空");
+            throw new BizException("\u4f18\u60e0\u5238id\u4e0d\u80fd\u4e3a\u7a7a");
         }
         if (getById(voucher.getId()) == null) {
-            throw new BizException("优惠券不存在");
+            throw new BizException("\u4f18\u60e0\u5238\u4e0d\u5b58\u5728");
         }
         LambdaUpdateWrapper<Voucher> w = new LambdaUpdateWrapper<Voucher>().eq(Voucher::getId, voucher.getId());
         if (voucher.getShopId() != null) {
@@ -90,7 +82,7 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
                 || voucher.getType() != null
                 || voucher.getStatus() != null;
         if (mainChanged && !update(w)) {
-            throw new BizException("更新优惠券失败");
+            throw new BizException("\u66f4\u65b0\u4f18\u60e0\u5238\u5931\u8d25");
         }
         if (seckillVoucherService.getById(voucher.getId()) != null) {
             if (voucher.getStock() != null || voucher.getBeginTime() != null || voucher.getEndTime() != null) {
@@ -117,14 +109,14 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     @Transactional(rollbackFor = Exception.class)
     public void removeVoucher(Long id) {
         if (getById(id) == null) {
-            throw new BizException("优惠券不存在");
+            throw new BizException("\u4f18\u60e0\u5238\u4e0d\u5b58\u5728");
         }
         if (seckillVoucherService.getById(id) != null) {
             seckillVoucherService.removeById(id);
         }
         stringRedisTemplate.delete(SECKILL_STOCK_KEY + id);
         if (!removeById(id)) {
-            throw new BizException("删除优惠券失败");
+            throw new BizException("\u5220\u9664\u4f18\u60e0\u5238\u5931\u8d25");
         }
     }
 

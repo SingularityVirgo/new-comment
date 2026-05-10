@@ -11,7 +11,7 @@ export function UserPage() {
   const [profile, setProfile] = useState<UserDTO | null>(null);
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [following, setFollowing] = useState<boolean | null>(null);
-  const [commons, setCommons] = useState<UserDTO[] | null>(null);
+  const [followingList, setFollowingList] = useState<UserDTO[]>([]);
   const [current, setCurrent] = useState(1);
   const [err, setErr] = useState('');
 
@@ -35,6 +35,12 @@ export function UserPage() {
       } else {
         setFollowing(null);
       }
+      if (me) {
+        const fl = await request<UserDTO[]>(`/follow/following/${uid}`);
+        if (!cancelled && fl.success) setFollowingList((fl.data as UserDTO[]) || []);
+      } else if (!cancelled) {
+        setFollowingList([]);
+      }
     })();
     return () => {
       cancelled = true;
@@ -51,9 +57,14 @@ export function UserPage() {
     setFollowing(follow);
   }
 
-  async function loadCommons() {
-    const r = await request<UserDTO[]>(`/follow/common/${uid}`);
-    if (r.success) setCommons((r.data as UserDTO[]) || []);
+  async function followUserInList(targetId: number) {
+    if (!me || targetId === me.id) return;
+    const r = await request(`/follow/${targetId}/true`, { method: 'PUT' });
+    if (!r.success) {
+      alert(r.errorMsg || '关注失败');
+      return;
+    }
+    setFollowingList((prev) => prev.map((u) => (u.id === targetId ? { ...u, isFollow: true } : u)));
   }
 
   if (!Number.isFinite(uid)) return <div className="error-banner">无效用户</div>;
@@ -72,29 +83,47 @@ export function UserPage() {
                 <button type="button" className="btn btn-primary" onClick={() => void toggleFollow(!(following ?? false))}>
                   {following ? '取消关注' : '关注'}
                 </button>
-                <button type="button" className="btn" onClick={() => void loadCommons()}>
-                  共同关注
-                </button>
               </div>
             )}
           </div>
         </div>
-        {commons && (
-          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--stroke)' }}>
-            <div className="muted" style={{ marginBottom: 8, fontWeight: 600 }}>
-              共同关注
-            </div>
-            <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
-              {commons.length === 0 && <span className="muted">无</span>}
-              {commons.map((u) => (
-                <Link key={u.id} to={`/user/${u.id}`} className="row" style={{ gap: 6 }}>
-                  <img className="avatar" src={assetUrl(u.icon)} alt="" width={28} height={28} style={{ width: 28, height: 28 }} />
-                  <span style={{ color: 'var(--text)', fontSize: '0.9rem' }}>{u.nickName}</span>
-                </Link>
-              ))}
-            </div>
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--stroke)' }}>
+          <div className="muted" style={{ marginBottom: 10, fontWeight: 600 }}>
+            关注列表
           </div>
-        )}
+          {followingList.length === 0 && <span className="muted">暂无</span>}
+          {followingList.map((u) => (
+            <div
+              key={u.id}
+              className="row"
+              style={{
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 0',
+                borderBottom: '1px solid var(--stroke)',
+              }}
+            >
+              <Link to={`/user/${u.id}`} className="row" style={{ gap: 10, flex: 1, minWidth: 0, color: 'inherit' }}>
+                <img className="avatar" src={assetUrl(u.icon)} alt="" width={36} height={36} style={{ width: 36, height: 36, flexShrink: 0 }} />
+                <span style={{ color: 'var(--text)', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {u.nickName}
+                </span>
+              </Link>
+              {me && u.id !== me.id ? (
+                u.isFollow ? (
+                  <span className="muted" style={{ fontSize: '0.85rem', flexShrink: 0 }}>
+                    已关注
+                  </span>
+                ) : (
+                  <button type="button" className="btn btn-primary" style={{ padding: '4px 12px', minWidth: 40 }} onClick={() => void followUserInList(u.id)} aria-label={`关注 ${u.nickName}`}>
+                    +
+                  </button>
+                )
+              ) : null}
+            </div>
+          ))}
+        </div>
       </div>
       {err && <div className="error-banner">{err}</div>}
       <h2 className="section-title">TA 的笔记</h2>

@@ -2,7 +2,7 @@ package com.virgo.interceptor;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
-import com.virgo.dto.UserDTO;
+import com.virgo.domain.dto.auth.CurrentUser;
 import com.virgo.utils.UserHolder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -38,19 +38,17 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
         if (objectMap.isEmpty()) {
             return true;
         }
-        //5.将查询到的hash值转为DTO
-        UserDTO userDTO = BeanUtil.fillBeanWithMap(objectMap, new UserDTO(), false);
+        CurrentUser currentUser = BeanUtil.fillBeanWithMap(objectMap, new CurrentUser(), false);
 
-        //4.保存用户到ThreadLocal里
-        UserHolder.saveUser(userDTO);
+        UserHolder.saveUser(currentUser);
         //6.刷新token有效期
         stringRedisTemplate.expire(key, LOGIN_USER_TTL, TimeUnit.MINUTES);
 
         return true;
     }
 
-//    private UserDTO convertToDTO(User user) {
-//        UserDTO dto = new UserDTO();
+//    private CurrentUser convertToDTO(User user) {
+//        CurrentUser dto = new CurrentUser();
 //        // 复制需要的属性
 //        dto.setId(user.getId());
 //        dto.setNickName(user.getNickName());

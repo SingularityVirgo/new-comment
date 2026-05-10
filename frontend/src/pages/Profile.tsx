@@ -41,6 +41,11 @@ export function Profile() {
               {user.nickName}
             </div>
             <div className="muted">ID：{user.id}</div>
+            <div className="row" style={{ marginTop: 12, flexWrap: 'wrap' }}>
+              <Link to="/profile/following" className="btn">
+                我的关注
+              </Link>
+            </div>
             <div className="row" style={{ marginTop: 16, flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-primary" onClick={() => void sign()}>
                 今日签到

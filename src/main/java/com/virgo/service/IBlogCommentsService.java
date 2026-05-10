@@ -1,15 +1,17 @@
 package com.virgo.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.virgo.entity.BlogComments;
+import com.virgo.domain.dto.comment.BlogCommentItemDto;
+import com.virgo.domain.dto.comment.CommentCreateCommand;
+import com.virgo.domain.po.BlogComments;
 
 import java.util.List;
 
 public interface IBlogCommentsService extends IService<BlogComments> {
 
-    Long addComment(BlogComments comment);
+    Long addComment(CommentCreateCommand command);
 
-    List<BlogComments> pageForBlog(Long blogId, Integer current);
+    List<BlogCommentItemDto> pageForBlog(Long blogId, Integer current);
 
     void updateMyComment(Long id, String content);
 
