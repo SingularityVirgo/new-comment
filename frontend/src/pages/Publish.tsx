@@ -280,7 +280,7 @@ export function Publish() {
           <div className="field">
             <label>图片</label>
             <input type="file" accept="image/*" onChange={(e) => void onUpload(e)} disabled={uploading} style={{ color: 'var(--text-soft)' }} />
-            <p className="muted">上传到后端本地目录，返回相对路径后写入笔记。</p>
+            <p className="muted">上传到后端（开启 OSS 时返回图片完整 URL，否则为本地相对路径），写入笔记后在详情页直接展示。</p>
             {uploading && (
               <div className="row" style={{ marginTop: 8 }}>
                 <span className="spinner" aria-hidden />
