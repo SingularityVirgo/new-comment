@@ -3,6 +3,7 @@ package com.virgo.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.UUID;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.virgo.common.exception.BizException;
@@ -78,6 +79,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         stringRedisTemplate.opsForHash().putAll(LOGIN_USER_KEY + token, stringObjectMap);
         stringRedisTemplate.expire(LOGIN_USER_KEY + token, LOGIN_USER_TTL, TimeUnit.MINUTES);
         return token;
+    }
+
+    @Override
+    public void logout(String authorizationHeaderToken) {
+        if (StrUtil.isNotBlank(authorizationHeaderToken)) {
+            stringRedisTemplate.delete(LOGIN_USER_KEY + authorizationHeaderToken);
+        }
     }
 
     @Override

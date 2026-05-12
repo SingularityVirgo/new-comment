@@ -7,6 +7,7 @@ import com.virgo.service.IUserInfoService;
 import com.virgo.service.IUserService;
 import com.virgo.utils.UserHolder;
 import com.virgo.web.assembly.WebModels;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,8 +41,8 @@ public class UserController {
     }
 
     @PostMapping("/logout")
-    public Result<?> logout() {
-        UserHolder.removeUser();
+    public Result<?> logout(HttpServletRequest request) {
+        userService.logout(request.getHeader("authorization"));
         return Result.ok();
     }
 
