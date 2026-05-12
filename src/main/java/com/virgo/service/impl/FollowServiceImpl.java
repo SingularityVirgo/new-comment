@@ -10,7 +10,7 @@ import com.virgo.domain.po.User;
 import com.virgo.mapper.FollowMapper;
 import com.virgo.service.IFollowService;
 import com.virgo.service.IUserService;
-import com.virgo.utils.UserHolder;
+import com.virgo.security.CurrentUserAccessor;
 import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -33,7 +33,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
 
     @Override
     public void follow(Long followUserId, Boolean isFollow) {
-        Long userId = UserHolder.getUser().getId();
+        Long userId = CurrentUserAccessor.require().getId();
         String key = "follows:" + userId;
         if (isFollow) {
             Follow follow = new Follow();
@@ -54,14 +54,14 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
 
     @Override
     public Boolean isFollow(Long followUserId) {
-        Long userId = UserHolder.getUser().getId();
+        Long userId = CurrentUserAccessor.require().getId();
         Integer count = Math.toIntExact(query().eq("user_id", userId).eq("follow_user_id", followUserId).count());
         return count > 0;
     }
 
     @Override
     public List<MutualFollowUserDto> followCommons(Long id) {
-        Long userId = UserHolder.getUser().getId();
+        Long userId = CurrentUserAccessor.require().getId();
         String key = "follows:" + userId;
         String key2 = "follows:" + id;
         Set<String> intersect = stringRedisTemplate.opsForSet().intersect(key, key2);
@@ -90,7 +90,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
                 .map(user -> BeanUtil.copyProperties(user, FollowingUserDto.class))
                 .collect(Collectors.toList());
 
-        Long viewerId = UserHolder.getUser().getId();
+        Long viewerId = CurrentUserAccessor.require().getId();
         if (viewerId.equals(userId)) {
             for (FollowingUserDto u : result) {
                 u.setIsFollow(true);

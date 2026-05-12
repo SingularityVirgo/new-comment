@@ -12,9 +12,9 @@ import com.virgo.domain.dto.auth.LoginRequest;
 import com.virgo.domain.dto.user.UserProfileDto;
 import com.virgo.domain.po.User;
 import com.virgo.mapper.UserMapper;
+import com.virgo.security.CurrentUserAccessor;
 import com.virgo.service.IUserService;
 import com.virgo.utils.RegexUtils;
-import com.virgo.utils.UserHolder;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -90,7 +90,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public void sign() {
-        Long userId = UserHolder.getUser().getId();
+        Long userId = CurrentUserAccessor.require().getId();
         LocalDateTime now = LocalDateTime.now();
         String keySuffix = now.format(DateTimeFormatter.ofPattern("yyyy:MM"));
         String key = USER_SIGN_KEY + userId + ":" + keySuffix;
@@ -100,7 +100,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Integer signCount() {
-        Long userId = UserHolder.getUser().getId();
+        Long userId = CurrentUserAccessor.require().getId();
         LocalDateTime now = LocalDateTime.now();
         String keySuffix = now.format(DateTimeFormatter.ofPattern("yyyy:MM"));
         String key = USER_SIGN_KEY + userId + ":" + keySuffix;

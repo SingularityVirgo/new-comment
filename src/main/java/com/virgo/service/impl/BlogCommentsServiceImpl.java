@@ -17,7 +17,7 @@ import com.virgo.service.IBlogCommentsService;
 import com.virgo.service.IBlogService;
 import com.virgo.service.IUserService;
 import com.virgo.utils.SystemConstants;
-import com.virgo.utils.UserHolder;
+import com.virgo.security.CurrentUserAccessor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +45,7 @@ public class BlogCommentsServiceImpl extends ServiceImpl<BlogCommentsMapper, Blo
         if (blog == null) {
             throw new BizException("\u7b14\u8bb0\u4e0d\u5b58\u5728");
         }
-        Long uid = UserHolder.getUser().getId();
+        Long uid = CurrentUserAccessor.require().getId();
         BlogComments comment = new BlogComments();
         comment.setBlogId(command.getBlogId());
         comment.setContent(command.getContent().trim());
@@ -93,7 +93,7 @@ public class BlogCommentsServiceImpl extends ServiceImpl<BlogCommentsMapper, Blo
         if (existing == null) {
             throw new BizException("\u8bc4\u8bba\u4e0d\u5b58\u5728");
         }
-        if (!UserHolder.getUser().getId().equals(existing.getUserId())) {
+        if (!CurrentUserAccessor.require().getId().equals(existing.getUserId())) {
             throw new BizException("\u65e0\u6743\u4fee\u6539\u8be5\u8bc4\u8bba");
         }
         boolean ok = update(new LambdaUpdateWrapper<BlogComments>()
@@ -111,7 +111,7 @@ public class BlogCommentsServiceImpl extends ServiceImpl<BlogCommentsMapper, Blo
         if (existing == null) {
             throw new BizException("\u8bc4\u8bba\u4e0d\u5b58\u5728");
         }
-        if (!UserHolder.getUser().getId().equals(existing.getUserId())) {
+        if (!CurrentUserAccessor.require().getId().equals(existing.getUserId())) {
             throw new BizException("\u65e0\u6743\u5220\u9664\u8be5\u8bc4\u8bba");
         }
         if (!removeById(id)) {

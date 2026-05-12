@@ -8,7 +8,7 @@ import com.virgo.mapper.VoucherOrderMapper;
 import com.virgo.service.ISeckillVoucherService;
 import com.virgo.service.IVoucherOrderService;
 import com.virgo.utils.RedisIdWorker;
-import com.virgo.utils.UserHolder;
+import com.virgo.security.CurrentUserAccessor;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -149,7 +149,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @Override
     public Long seckillVoucher(Long voucherId) {
-        Long userId = UserHolder.getUser().getId();
+        Long userId = CurrentUserAccessor.require().getId();
         long orderId = redisIdWorker.nextId("order");
 
         List<String> keys = new ArrayList<>();

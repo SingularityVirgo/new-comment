@@ -3,7 +3,6 @@ package com.virgo.security;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.virgo.domain.dto.auth.CurrentUser;
-import com.virgo.utils.UserHolder;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,7 +26,7 @@ import static com.virgo.utils.RedisConstants.LOGIN_USER_KEY;
 import static com.virgo.utils.RedisConstants.LOGIN_USER_TTL;
 
 /**
- * 从请求头读取与历史一致的 token，在 Redis 中解析会话并写入 Spring Security 与 {@link UserHolder}。
+ * 从请求头读取与历史一致的 token，在 Redis 中解析会话并写入 {@link SecurityContextHolder}。
  */
 @Component
 @RequiredArgsConstructor
@@ -54,12 +53,10 @@ public class RedisTokenAuthenticationFilter extends OncePerRequestFilter {
                             new UsernamePasswordAuthenticationToken(currentUser, token, USER_AUTHORITIES);
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    UserHolder.saveUser(currentUser);
                 }
             }
             filterChain.doFilter(request, response);
         } finally {
-            UserHolder.removeUser();
             SecurityContextHolder.clearContext();
         }
     }

@@ -3,9 +3,9 @@ package com.virgo.controller;
 import com.virgo.domain.dto.auth.LoginRequest;
 import com.virgo.domain.dto.userinfo.UserInfoUpdateCommand;
 import com.virgo.web.api.Result;
+import com.virgo.security.CurrentUserAccessor;
 import com.virgo.service.IUserInfoService;
 import com.virgo.service.IUserService;
-import com.virgo.utils.UserHolder;
 import com.virgo.web.assembly.WebModels;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -48,7 +48,7 @@ public class UserController {
 
     @GetMapping("/me")
     public Result<?> me() {
-        return Result.ok(WebModels.toUserProfileVo(UserHolder.getUser()));
+        return Result.ok(WebModels.toUserProfileVo(CurrentUserAccessor.require()));
     }
 
     @GetMapping("/info/{id}")

@@ -7,7 +7,7 @@ import com.virgo.domain.dto.userinfo.UserInfoUpdateCommand;
 import com.virgo.domain.po.UserInfo;
 import com.virgo.mapper.UserInfoMapper;
 import com.virgo.service.IUserInfoService;
-import com.virgo.utils.UserHolder;
+import com.virgo.security.CurrentUserAccessor;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -27,7 +27,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
     @Override
     public void updateMyProfile(UserInfoUpdateCommand command) {
-        Long uid = UserHolder.getUser().getId();
+        Long uid = CurrentUserAccessor.require().getId();
         UserInfo patch = new UserInfo();
         patch.setUserId(uid);
         patch.setCity(command.getCity());

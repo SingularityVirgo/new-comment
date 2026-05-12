@@ -23,7 +23,7 @@ import com.virgo.service.IBlogService;
 import com.virgo.service.IFollowService;
 import com.virgo.service.IUserService;
 import com.virgo.utils.SystemConstants;
-import com.virgo.utils.UserHolder;
+import com.virgo.security.CurrentUserAccessor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -73,7 +73,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Override
     public void likeBlog(Long id) {
-        Long userId = UserHolder.getUser().getId();
+        Long userId = CurrentUserAccessor.require().getId();
         String key = BLOG_LIKED_KEY + id;
         Double score = stringRedisTemplate.opsForZSet().score(key, userId.toString());
         if (score == null) {
@@ -107,7 +107,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Override
     public Long saveBlog(BlogSaveCommand command) {
-        CurrentUser user = UserHolder.getUser();
+        CurrentUser user = CurrentUserAccessor.require();
         Blog blog = new Blog();
         blog.setShopId(command.getShopId());
         blog.setTitle(command.getTitle());
@@ -128,7 +128,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Override
     public BlogFollowScrollDto queryBlogOfFollow(Long max, Integer offset) {
-        Long userId = UserHolder.getUser().getId();
+        Long userId = CurrentUserAccessor.require().getId();
         String key = FEED_KEY + userId;
         Set<ZSetOperations.TypedTuple<String>> typedTuples = stringRedisTemplate.opsForZSet()
                 .reverseRangeByScoreWithScores(key, 0, max, offset, 2);
@@ -164,7 +164,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Override
     public List<BlogFeedDto> pageBlogsForCurrentUser(Integer current) {
-        CurrentUser user = UserHolder.getUser();
+        CurrentUser user = CurrentUserAccessor.require();
         Page<Blog> page = query()
                 .eq("user_id", user.getId())
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
@@ -188,7 +188,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         if (command.getId() == null) {
             throw new BizException("\u7b14\u8bb0id\u4e0d\u80fd\u4e3a\u7a7a");
         }
-        Long uid = UserHolder.getUser().getId();
+        Long uid = CurrentUserAccessor.require().getId();
         Blog existing = getById(command.getId());
         if (existing == null) {
             throw new BizException("\u7b14\u8bb0\u4e0d\u5b58\u5728\uff01");
@@ -218,7 +218,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Override
     public void removeMyBlog(Long id) {
-        Long uid = UserHolder.getUser().getId();
+        Long uid = CurrentUserAccessor.require().getId();
         Blog existing = getById(id);
         if (existing == null) {
             throw new BizException("\u7b14\u8bb0\u4e0d\u5b58\u5728\uff01");
@@ -270,7 +270,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
             return;
         }
         applyBlogAuthors(blogs);
-        CurrentUser current = UserHolder.getUser();
+        CurrentUser current = CurrentUserAccessor.get();
         if (current == null) {
             return;
         }
