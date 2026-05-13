@@ -17,7 +17,11 @@ public class RedisConstants {
     public static final String LOCK_SHOP_KEY = "lock:shop:";
     public static final Long LOCK_SHOP_TTL = 10L;
 
-    public static final String SECKILL_STOCK_KEY = "seckill:stock:";
+    /** 与 Lua 秒杀脚本、订单异步消费使用的 Redis key 一致 */
+    public static final String VOUCHER_STOCK_KEY = "voucher:stock:";
+    public static final String VOUCHER_ORDER_SET_KEY = "voucher:order:";
+    public static final String SECKILL_STREAM_KEY = "stream.orders";
+
     public static final String BLOG_LIKED_KEY = "blog:liked:";
     public static final String FEED_KEY = "feed:";
     public static final String SHOP_GEO_KEY = "shop:geo:";

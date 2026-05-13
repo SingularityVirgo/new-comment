@@ -10,9 +10,11 @@ import com.virgo.domain.dto.follow.FollowingUserDto;
 import com.virgo.domain.dto.follow.MutualFollowUserDto;
 import com.virgo.domain.dto.user.UserProfileDto;
 import com.virgo.domain.dto.userinfo.UserInfoPublicDto;
+import com.virgo.domain.po.Merchant;
 import com.virgo.domain.po.Shop;
 import com.virgo.domain.po.ShopType;
 import com.virgo.domain.po.Voucher;
+import com.virgo.domain.vo.merchant.MerchantPublicVo;
 import com.virgo.domain.vo.comment.BlogCommentVo;
 import com.virgo.domain.vo.blog.BlogFeedVo;
 import com.virgo.domain.vo.blog.BlogFollowScrollVo;
@@ -118,6 +120,10 @@ public final class WebModels {
 
     public static ShopDetailVo toShopDetailVo(Shop shop) {
         return copy(shop, ShopDetailVo.class);
+    }
+
+    public static MerchantPublicVo toMerchantPublicVo(Merchant merchant) {
+        return copy(merchant, MerchantPublicVo.class);
     }
 
     public static ShopListItemVo toShopListItemVo(Shop shop) {

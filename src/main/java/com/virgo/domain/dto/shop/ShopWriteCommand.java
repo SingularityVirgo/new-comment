@@ -8,6 +8,7 @@ public class ShopWriteCommand {
     private Long id;
     private String name;
     private Long typeId;
+    private Long merchantId;
     private String images;
     private String area;
     private String address;

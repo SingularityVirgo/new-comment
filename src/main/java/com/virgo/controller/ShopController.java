@@ -1,9 +1,12 @@
 package com.virgo.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.virgo.common.exception.BizException;
 import com.virgo.domain.dto.shop.ShopWriteCommand;
 import com.virgo.domain.po.Shop;
+import com.virgo.domain.vo.shop.ShopDetailVo;
 import com.virgo.web.api.Result;
+import com.virgo.service.IMerchantService;
 import com.virgo.service.IShopService;
 import com.virgo.web.assembly.WebModels;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +26,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class ShopController {
 
     private final IShopService shopService;
+    private final IMerchantService merchantService;
 
     @GetMapping("/{id}")
     public Result<?> queryShopById(@PathVariable("id") Long id) {
-        return Result.ok(WebModels.toShopDetailVo(shopService.queryById(id)));
+        Shop shop = shopService.queryById(id);
+        ShopDetailVo vo = WebModels.toShopDetailVo(shop);
+        if (shop.getMerchantId() != null) {
+            try {
+                vo.setMerchant(WebModels.toMerchantPublicVo(merchantService.requirePublic(shop.getMerchantId())));
+            } catch (BizException ex) {
+                // 商户停用：仍返回店铺，不附带商户展示块
+            }
+        }
+        return Result.ok(vo);
     }
 
     @PostMapping

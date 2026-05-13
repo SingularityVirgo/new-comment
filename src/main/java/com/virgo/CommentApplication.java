@@ -5,8 +5,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableAspectJAutoProxy(exposeProxy = true)
+@EnableScheduling
 @MapperScan("com.virgo.mapper")
 @SpringBootApplication(exclude = {UserDetailsServiceAutoConfiguration.class})
 public class CommentApplication {

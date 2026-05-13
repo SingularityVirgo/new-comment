@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import static com.virgo.utils.RedisConstants.SECKILL_STOCK_KEY;
+import static com.virgo.utils.RedisConstants.VOUCHER_STOCK_KEY;
 
 @Service
 public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> implements IVoucherService {
@@ -100,7 +100,7 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
                 seckillVoucherService.updateById(patch);
             }
             if (voucher.getStock() != null) {
-                stringRedisTemplate.opsForValue().set(SECKILL_STOCK_KEY + voucher.getId(), voucher.getStock().toString());
+        stringRedisTemplate.opsForValue().set(VOUCHER_STOCK_KEY + voucher.getId(), voucher.getStock().toString());
             }
         }
     }
@@ -114,7 +114,7 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         if (seckillVoucherService.getById(id) != null) {
             seckillVoucherService.removeById(id);
         }
-        stringRedisTemplate.delete(SECKILL_STOCK_KEY + id);
+        stringRedisTemplate.delete(VOUCHER_STOCK_KEY + id);
         if (!removeById(id)) {
             throw new BizException("\u5220\u9664\u4f18\u60e0\u5238\u5931\u8d25");
         }
@@ -130,6 +130,6 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         seckillVoucher.setBeginTime(voucher.getBeginTime());
         seckillVoucher.setEndTime(voucher.getEndTime());
         seckillVoucherService.save(seckillVoucher);
-        stringRedisTemplate.opsForValue().set(SECKILL_STOCK_KEY + voucher.getId(), voucher.getStock().toString());
+        stringRedisTemplate.opsForValue().set(VOUCHER_STOCK_KEY + voucher.getId(), voucher.getStock().toString());
     }
 }

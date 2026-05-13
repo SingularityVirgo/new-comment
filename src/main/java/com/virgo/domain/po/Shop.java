@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  * 
  * </p>
  *
- * @author è™å“¥
+ * @author è??å?¥
  * @since 2021-12-22
  */
 @Data
@@ -28,33 +28,36 @@ public class Shop implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * ä¸»é”®
+     * ä¸»é?®
      */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
     /**
-     * å•†é“ºåç§°
+     * å??é?ºåç§°
      */
     private String name;
 
     /**
-     * å•†é“ºç±»å‹çš„id
+     * å??é?ºç±»å??ç??id
      */
     private Long typeId;
 
+    /** ???? id?C ?????????? */
+    private Long merchantId;
+
     /**
-     * å•†é“ºå›¾ç‰‡ï¼Œå¤šä¸ªå›¾ç‰‡ä»¥','éš”å¼€
+     * å??é?ºå?¾ç??ï¼?å¤?ä¸ªå?¾ç??ä»¥','é??å¼?
      */
     private String images;
 
     /**
-     * å•†åœˆï¼Œä¾‹å¦‚é™†å®¶å˜´
+     * å??å??ï¼?ä¾?å¦?é??å®¶å?´
      */
     private String area;
 
     /**
-     * åœ°å€
+     * å?°å?
      */
     private String address;
 
@@ -69,37 +72,37 @@ public class Shop implements Serializable {
     private Double y;
 
     /**
-     * å‡ä»·ï¼Œå–æ•´æ•°
+     * å?ä»·ï¼?å?æ?´æ?°
      */
     private Long avgPrice;
 
     /**
-     * é”€é‡?
+     * é??é??
      */
     private Integer sold;
 
     /**
-     * è¯„è®ºæ•°é‡
+     * è¯?è®ºæ?°é?
      */
     private Integer comments;
 
     /**
-     * è¯„åˆ†ï¼?~5åˆ†ï¼Œä¹?0ä¿å­˜ï¼Œé¿å…å°æ•?
+     * è¯?å??ï¼?~5å??ï¼?ä¹?0ä¿å­?ï¼?é¿å?å°æ??
      */
     private Integer score;
 
     /**
-     * è¥ä¸šæ—¶é—´ï¼Œä¾‹å¦?10:00-22:00
+     * è¥ä¸?æ?¶é?´ï¼?ä¾?å¦?10:00-22:00
      */
     private String openHours;
 
     /**
-     * åˆ›å»ºæ—¶é—´
+     * å??å»ºæ?¶é?´
      */
     private LocalDateTime createTime;
 
     /**
-     * æ›´æ–°æ—¶é—´
+     * æ?´æ?°æ?¶é?´
      */
     private LocalDateTime updateTime;
 

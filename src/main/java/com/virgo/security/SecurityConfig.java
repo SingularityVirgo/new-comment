@@ -3,6 +3,7 @@ package com.virgo.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -22,6 +23,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final RedisTokenAuthenticationFilter redisTokenAuthenticationFilter;
+    private final AdminApiTokenFilter adminApiTokenFilter;
     private final ObjectMapper objectMapper;
 
     @Bean
@@ -44,12 +46,17 @@ public class SecurityConfig {
                                 "/shop/**",
                                 "/shop-type/**",
                                 "/upload/**",
-                                "/voucher/**",
+                                "/merchant/**",
                                 "/error")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/voucher/**")
+                        .permitAll()
+                        .requestMatchers("/admin/**")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(new RestAuthenticationEntryPoint(objectMapper)))
+                .addFilterBefore(adminApiTokenFilter, RedisTokenAuthenticationFilter.class)
                 .addFilterBefore(redisTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

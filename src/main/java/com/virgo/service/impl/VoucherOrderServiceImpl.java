@@ -15,9 +15,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.data.redis.connection.stream.*;
+import org.springframework.data.redis.connection.stream.Consumer;
+import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.StreamOffset;
+import org.springframework.data.redis.connection.stream.StreamReadOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.domain.stream.ReadOffset;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -26,6 +30,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import static com.virgo.utils.RedisConstants.SECKILL_STREAM_KEY;
+import static com.virgo.utils.RedisConstants.VOUCHER_ORDER_SET_KEY;
+import static com.virgo.utils.RedisConstants.VOUCHER_STOCK_KEY;
 
 /**
  * \u4f18\u60e0\u5238\u8ba2\u5355\u670d\u52a1\u5b9e\u73b0\u3002
@@ -56,7 +64,19 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @PostConstruct
     private void init() {
+        ensureSeckillStreamGroup();
         SECKILL_ORDER_EXECUTOR.submit(new VoucherOrderHandler());
+    }
+
+    private void ensureSeckillStreamGroup() {
+        try {
+            stringRedisTemplate.opsForStream().createGroup(SECKILL_STREAM_KEY, ReadOffset.from("0"), "g1");
+        } catch (Exception e) {
+            String m = e.getMessage() != null ? e.getMessage() : "";
+            if (!m.contains("BUSYGROUP")) {
+                log.warn("Redis stream group on {}: {}", SECKILL_STREAM_KEY, m);
+            }
+        }
     }
 
     private class VoucherOrderHandler implements Runnable {
@@ -72,7 +92,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     List<MapRecord<String, Object, Object>> list = stringRedisTemplate.opsForStream().read(
                             Consumer.from("g1", "c1"),
                             StreamReadOptions.empty().count(1).block(Duration.ofSeconds(2)),
-                            StreamOffset.create("stream.orders", ReadOffset.lastConsumed())
+                            StreamOffset.create(SECKILL_STREAM_KEY, ReadOffset.lastConsumed())
                     );
                     if (list == null || list.isEmpty()) {
                         continue;
@@ -81,7 +101,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     Map<Object, Object> value = record.getValue();
                     VoucherOrder voucherOrder = BeanUtil.fillBeanWithMap(value, new VoucherOrder(), true);
                     createVoucherOrder(voucherOrder);
-                    stringRedisTemplate.opsForStream().acknowledge("s1", "g1", record.getId());
+                    stringRedisTemplate.opsForStream().acknowledge(SECKILL_STREAM_KEY, "g1", record.getId());
                 } catch (IllegalStateException e) {
                     if (e.getMessage().contains("LettuceConnectionFactory was destroyed")) {
                         log.warn("Redis connection was destroyed, exiting pending list handler");
@@ -98,7 +118,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     List<MapRecord<String, Object, Object>> list = stringRedisTemplate.opsForStream().read(
                             Consumer.from("g1", "c1"),
                             StreamReadOptions.empty().count(1),
-                            StreamOffset.create("stream.orders", ReadOffset.from("0"))
+                            StreamOffset.create(SECKILL_STREAM_KEY, ReadOffset.from("0"))
                     );
                     if (list == null || list.isEmpty()) {
                         break;
@@ -107,7 +127,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     Map<Object, Object> value = record.getValue();
                     VoucherOrder voucherOrder = BeanUtil.fillBeanWithMap(value, new VoucherOrder(), true);
                     createVoucherOrder(voucherOrder);
-                    stringRedisTemplate.opsForStream().acknowledge("s1", "g1", record.getId());
+                    stringRedisTemplate.opsForStream().acknowledge(SECKILL_STREAM_KEY, "g1", record.getId());
                 } catch (Exception e) {
                     log.error("\u5904\u7406\u8ba2\u5355\u5f02\u5e38", e);
                 }
@@ -153,9 +173,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         long orderId = redisIdWorker.nextId("order");
 
         List<String> keys = new ArrayList<>();
-        keys.add("voucher:stock:" + voucherId);
-        keys.add("voucher:order:" + voucherId);
-        keys.add("stream:seckill");
+        keys.add(VOUCHER_STOCK_KEY + voucherId);
+        keys.add(VOUCHER_ORDER_SET_KEY + voucherId);
+        keys.add(SECKILL_STREAM_KEY);
 
         List<String> args = new ArrayList<>();
         args.add(userId.toString());

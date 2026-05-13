@@ -52,3 +52,11 @@ aliyun:
 logging:
   level:
     com.virgo: debug
+
+app:
+  admin:
+    # 运营后台发券接口请求头 X-Admin-Token；生产请用环境变量覆盖
+    api-token: ${ADMIN_API_TOKEN:dev-admin-token}
+  seckill:
+    # 距 begin_time 提前多少分钟内把库存从 DB 预热进 Redis
+    preheat-lead-minutes: ${SECKILL_PREHEAT_LEAD_MINUTES:5}
