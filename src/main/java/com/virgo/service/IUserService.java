@@ -2,8 +2,11 @@ package com.virgo.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.virgo.domain.dto.auth.LoginRequest;
+import com.virgo.domain.dto.user.NickNameUpdateCommand;
+import com.virgo.domain.dto.user.PasswordChangeCommand;
 import com.virgo.domain.dto.user.UserProfileDto;
 import com.virgo.domain.po.User;
+import com.virgo.domain.vo.user.MyAccountVo;
 import jakarta.servlet.http.HttpSession;
 
 import java.util.Optional;
@@ -11,6 +14,9 @@ import java.util.Optional;
 public interface IUserService extends IService<User> {
 
     void sendCode(String phone, HttpSession session);
+
+    /** 向当前登录用户绑定手机号发送登录/改密用验证码 */
+    void sendCodeToMyPhone(HttpSession session);
 
     String login(LoginRequest loginRequest, HttpSession session);
 
@@ -22,4 +28,10 @@ public interface IUserService extends IService<User> {
     Integer signCount();
 
     Optional<UserProfileDto> findUserProfile(Long userId);
+
+    MyAccountVo getMyAccount();
+
+    void updateMyNickName(NickNameUpdateCommand command);
+
+    void changeMyPassword(PasswordChangeCommand command, HttpSession session);
 }

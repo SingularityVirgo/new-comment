@@ -8,6 +8,8 @@ import lombok.Data;
 @Data
 public class CurrentUser {
     private Long id;
+    /** 完整手机号，仅服务端会话使用；对外展示请脱敏 */
+    private String phone;
     private String nickName;
     private String icon;
 }

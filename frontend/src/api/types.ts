@@ -1,9 +1,27 @@
+export interface UserInfoDTO {
+  userId: number;
+  city?: string;
+  introduce?: string;
+  fans?: number;
+  followee?: number;
+  gender?: boolean;
+  birthday?: string;
+  credits?: number;
+  level?: boolean;
+}
+
 export interface UserDTO {
   id: number;
   nickName: string;
   icon: string;
   /** 当前登录用户是否已关注该用户（由部分接口填充） */
   isFollow?: boolean;
+  /** 以下字段由 GET /user/me 返回 */
+  phoneMasked?: string;
+  hasPassword?: boolean;
+  createTime?: string;
+  updateTime?: string;
+  userInfo?: UserInfoDTO | null;
 }
 
 export interface BlogComment {

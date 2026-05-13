@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { assetUrl, request } from '../api/request';
-import type { Blog, UserDTO } from '../api/types';
+import type { Blog, UserDTO, UserInfoDTO } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 
 export function UserPage() {
@@ -14,14 +14,32 @@ export function UserPage() {
   const [followingList, setFollowingList] = useState<UserDTO[]>([]);
   const [current, setCurrent] = useState(1);
   const [err, setErr] = useState('');
+  const [userInfo, setUserInfo] = useState<UserInfoDTO | null | undefined>(undefined);
+
+  function fmtTime(iso?: string) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('zh-CN');
+  }
+
+  function genderLabel(g?: boolean) {
+    if (g === true) return '女';
+    if (g === false) return '男';
+    return '—';
+  }
 
   useEffect(() => {
     if (!Number.isFinite(uid)) return;
     let cancelled = false;
+    setUserInfo(undefined);
     void (async () => {
       const u = await request<UserDTO>(`/user/${uid}`);
       if (cancelled) return;
       if (u.success) setProfile(u.data ?? null);
+      const ui = await request<UserInfoDTO | null>(`/user/info/${uid}`);
+      if (cancelled) return;
+      if (ui.success) setUserInfo(ui.data ?? null);
+      else setUserInfo(null);
       const b = await request<Blog[]>('/blog/of/user', { params: { id: uid, current } });
       if (cancelled) return;
       if (!b.success) setErr(b.errorMsg || '加载失败');
@@ -78,6 +96,11 @@ export function UserPage() {
             <div className="page-title" style={{ fontSize: '1.4rem', marginBottom: 4, WebkitTextFillColor: 'unset', color: 'var(--text)' }}>
               {profile?.nickName ?? `用户 ${uid}`}
             </div>
+            <div className="muted" style={{ fontSize: '0.88rem', lineHeight: 1.65, marginTop: 8 }}>
+              <div>用户 ID：{profile?.id ?? uid}</div>
+              <div>注册时间：{fmtTime(profile?.createTime)}</div>
+              <div>资料更新时间：{fmtTime(profile?.updateTime)}</div>
+            </div>
             {me && me.id !== uid && (
               <div className="row" style={{ marginTop: 12, flexWrap: 'wrap' }}>
                 <button type="button" className="btn btn-primary" onClick={() => void toggleFollow(!(following ?? false))}>
@@ -125,6 +148,29 @@ export function UserPage() {
           ))}
         </div>
       </div>
+
+      <div className="card" style={{ marginTop: 14 }}>
+        <div className="muted" style={{ marginBottom: 8, fontWeight: 600 }}>
+          扩展资料（tb_user_info）
+        </div>
+        {userInfo === undefined && <span className="muted">加载中…</span>}
+        {userInfo === null && <span className="muted">暂无扩展资料（表中无记录）</span>}
+        {userInfo != null && (
+          <div className="muted" style={{ fontSize: '0.9rem', lineHeight: 1.7 }}>
+            <div>城市：{userInfo.city || '—'}</div>
+            <div>个人介绍：{userInfo.introduce || '—'}</div>
+            <div>性别：{genderLabel(userInfo.gender)}</div>
+            <div>生日：{userInfo.birthday || '—'}</div>
+            <div>
+              粉丝：{userInfo.fans ?? 0} · 关注：{userInfo.followee ?? 0}
+            </div>
+            <div>
+              积分：{userInfo.credits ?? 0} · 会员：{userInfo.level === true ? '已开通' : userInfo.level === false ? '未开通' : String(userInfo.level ?? '—')}
+            </div>
+          </div>
+        )}
+      </div>
+
       {err && <div className="error-banner">{err}</div>}
       <h2 className="section-title">TA 的笔记</h2>
       {blogs.map((b) => (

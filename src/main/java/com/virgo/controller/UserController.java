@@ -1,9 +1,10 @@
 package com.virgo.controller;
 
 import com.virgo.domain.dto.auth.LoginRequest;
+import com.virgo.domain.dto.user.NickNameUpdateCommand;
+import com.virgo.domain.dto.user.PasswordChangeCommand;
 import com.virgo.domain.dto.userinfo.UserInfoUpdateCommand;
 import com.virgo.web.api.Result;
-import com.virgo.security.CurrentUserAccessor;
 import com.virgo.service.IUserInfoService;
 import com.virgo.service.IUserService;
 import com.virgo.web.assembly.WebModels;
@@ -48,7 +49,25 @@ public class UserController {
 
     @GetMapping("/me")
     public Result<?> me() {
-        return Result.ok(WebModels.toUserProfileVo(CurrentUserAccessor.require()));
+        return Result.ok(userService.getMyAccount());
+    }
+
+    @PostMapping("/me/code")
+    public Result<?> sendMyCode(HttpSession session) {
+        userService.sendCodeToMyPhone(session);
+        return Result.ok();
+    }
+
+    @PutMapping("/me/nickname")
+    public Result<?> updateNickname(@RequestBody NickNameUpdateCommand command) {
+        userService.updateMyNickName(command);
+        return Result.ok();
+    }
+
+    @PutMapping("/me/password")
+    public Result<?> changePassword(@RequestBody PasswordChangeCommand command, HttpSession session) {
+        userService.changeMyPassword(command, session);
+        return Result.ok();
     }
 
     @GetMapping("/info/{id}")

@@ -9,17 +9,26 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.virgo.common.exception.BizException;
 import com.virgo.domain.dto.auth.CurrentUser;
 import com.virgo.domain.dto.auth.LoginRequest;
+import com.virgo.domain.dto.user.NickNameUpdateCommand;
+import com.virgo.domain.dto.user.PasswordChangeCommand;
 import com.virgo.domain.dto.user.UserProfileDto;
 import com.virgo.domain.po.User;
+import com.virgo.domain.vo.user.MyAccountVo;
 import com.virgo.mapper.UserMapper;
 import com.virgo.security.CurrentUserAccessor;
+import com.virgo.service.IUserInfoService;
 import com.virgo.service.IUserService;
 import com.virgo.utils.RegexUtils;
+import com.virgo.web.assembly.WebModels;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -42,6 +51,8 @@ import static com.virgo.utils.RedisConstants.USER_SIGN_KEY;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final PasswordEncoder passwordEncoder;
+    private final IUserInfoService userInfoService;
 
     @Override
     public void sendCode(String phone, HttpSession session) {
@@ -59,8 +70,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (RegexUtils.isPhoneInvalid(phone)) {
             throw new BizException("\u624b\u673a\u53f7\u683c\u5f0f\u9519\u8bef");
         }
+        if (StrUtil.isNotBlank(loginRequest.getPassword())) {
+            return loginByPassword(phone, loginRequest.getPassword());
+        }
+        return loginByCode(phone, loginRequest.getCode());
+    }
+
+    private String loginByCode(String phone, String code) {
         String catchCode = stringRedisTemplate.opsForValue().get(LOGIN_CODE_KEY + phone);
-        String code = loginRequest.getCode();
         if (catchCode == null || !catchCode.equals(code)) {
             throw new BizException("\u9a8c\u8bc1\u7801\u9519\u8bef");
         }
@@ -68,8 +85,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (user == null) {
             user = createUserWithPhone(phone);
         }
+        return issueToken(user);
+    }
+
+    private String loginByPassword(String phone, String rawPassword) {
+        User user = query().eq("phone", phone).one();
+        if (user == null) {
+            throw new BizException("\u7528\u6237\u4e0d\u5b58\u5728\uff0c\u8bf7\u5148\u4f7f\u7528\u624b\u673a\u53f7\u9a8c\u8bc1\u7801\u767b\u5f55\u6ce8\u518c");
+        }
+        if (StrUtil.isBlank(user.getPassword())) {
+            throw new BizException("\u672a\u8bbe\u7f6e\u5bc6\u7801\u8bf7\u7528\u624b\u673a\u53f7\u767b\u5f55");
+        }
+        if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
+            throw new BizException("\u5bc6\u7801\u9519\u8bef");
+        }
+        return issueToken(user);
+    }
+
+    private String issueToken(User user) {
         String token = UUID.randomUUID().toString(true);
-        CurrentUser currentUser = BeanUtil.copyProperties(user, CurrentUser.class);
+        CurrentUser currentUser = new CurrentUser();
+        currentUser.setId(user.getId());
+        currentUser.setPhone(user.getPhone());
+        currentUser.setNickName(user.getNickName());
+        currentUser.setIcon(user.getIcon() == null ? "" : user.getIcon());
         Map<String, Object> stringObjectMap = BeanUtil.beanToMap(
                 currentUser,
                 new HashMap<>(),
@@ -79,6 +118,99 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         stringRedisTemplate.opsForHash().putAll(LOGIN_USER_KEY + token, stringObjectMap);
         stringRedisTemplate.expire(LOGIN_USER_KEY + token, LOGIN_USER_TTL, TimeUnit.MINUTES);
         return token;
+    }
+
+    @Override
+    public void sendCodeToMyPhone(HttpSession session) {
+        Long id = CurrentUserAccessor.require().getId();
+        User user = getById(id);
+        if (user == null || StrUtil.isBlank(user.getPhone())) {
+            throw new BizException("\u672a\u7ed1\u5b9a\u624b\u673a\u53f7");
+        }
+        sendCode(user.getPhone(), session);
+    }
+
+    @Override
+    public MyAccountVo getMyAccount() {
+        Long id = CurrentUserAccessor.require().getId();
+        User user = getById(id);
+        if (user == null) {
+            throw new BizException("\u7528\u6237\u4e0d\u5b58\u5728");
+        }
+        MyAccountVo vo = new MyAccountVo();
+        vo.setId(user.getId());
+        vo.setNickName(user.getNickName());
+        vo.setIcon(user.getIcon() == null ? "" : user.getIcon());
+        vo.setPhoneMasked(maskPhone(user.getPhone()));
+        vo.setHasPassword(StrUtil.isNotBlank(user.getPassword()));
+        vo.setCreateTime(user.getCreateTime());
+        vo.setUpdateTime(user.getUpdateTime());
+        userInfoService.findPresentableInfo(user.getId()).ifPresent(dto -> vo.setUserInfo(WebModels.toUserInfoVo(dto)));
+        return vo;
+    }
+
+    @Override
+    public void updateMyNickName(NickNameUpdateCommand command) {
+        String nick = command.getNickName() == null ? "" : command.getNickName().trim();
+        if (StrUtil.isBlank(nick)) {
+            throw new BizException("\u6635\u79f0\u4e0d\u80fd\u4e3a\u7a7a");
+        }
+        if (nick.length() > 32) {
+            throw new BizException("\u6635\u79f0\u4e0d\u80fd\u8d85\u8fc732\u4e2a\u5b57\u7b26");
+        }
+        Long id = CurrentUserAccessor.require().getId();
+        lambdaUpdate().eq(User::getId, id).set(User::getNickName, nick).update();
+        syncPrincipalNickName(nick);
+    }
+
+    @Override
+    public void changeMyPassword(PasswordChangeCommand command, HttpSession session) {
+        Long id = CurrentUserAccessor.require().getId();
+        User user = getById(id);
+        if (user == null || StrUtil.isBlank(user.getPhone())) {
+            throw new BizException("\u672a\u7ed1\u5b9a\u624b\u673a\u53f7");
+        }
+        String newPassword = command.getNewPassword();
+        if (StrUtil.isBlank(newPassword) || newPassword.length() < 6) {
+            throw new BizException("\u5bc6\u7801\u81f3\u5c116\u4f4d");
+        }
+        if (newPassword.length() > 64) {
+            throw new BizException("\u5bc6\u7801\u8fc7\u957f");
+        }
+        String catchCode = stringRedisTemplate.opsForValue().get(LOGIN_CODE_KEY + user.getPhone());
+        if (catchCode == null || !catchCode.equals(command.getCode())) {
+            throw new BizException("\u9a8c\u8bc1\u7801\u9519\u8bef");
+        }
+        stringRedisTemplate.delete(LOGIN_CODE_KEY + user.getPhone());
+        String encoded = passwordEncoder.encode(newPassword);
+        lambdaUpdate().eq(User::getId, id).set(User::getPassword, encoded).update();
+    }
+
+    private void syncPrincipalNickName(String nickName) {
+        CurrentUser cu = CurrentUserAccessor.get();
+        if (cu == null) {
+            return;
+        }
+        cu.setNickName(nickName);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof UsernamePasswordAuthenticationToken token)) {
+            return;
+        }
+        UsernamePasswordAuthenticationToken replacement =
+                new UsernamePasswordAuthenticationToken(cu, token.getCredentials(), token.getAuthorities());
+        replacement.setDetails(token.getDetails());
+        SecurityContextHolder.getContext().setAuthentication(replacement);
+        Object cred = token.getCredentials();
+        if (cred instanceof String tk && StrUtil.isNotBlank(tk)) {
+            stringRedisTemplate.opsForHash().put(LOGIN_USER_KEY + tk, "nickName", nickName);
+        }
+    }
+
+    private static String maskPhone(String phone) {
+        if (StrUtil.isBlank(phone) || phone.length() < 7) {
+            return "";
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 
     @Override
