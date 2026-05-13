@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  * 
  * </p>
  *
- * @author è™å“¥
+ * @author è??å?¥
  * @since 2021-12-24
  */
 @Data
@@ -28,58 +28,61 @@ public class UserInfo implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * ä¸»é”®ï¼Œç”¨æˆ·id
+     * ä¸»é?®ï¼?ç?¨æ?·id
      */
     @TableId(value = "user_id", type = IdType.AUTO)
     private Long userId;
 
     /**
-     * åŸå¸‚åç§°
+     * å??å¸?åç§°
      */
     private String city;
 
     /**
-     * ä¸ªäººä»‹ç»ï¼Œä¸è¦è¶…è¿?28ä¸ªå­—ç¬?
+     * ä¸ªäººä»?ç»ï¼?ä¸è¦è¶?è¿?28ä¸ªå­?ç¬?
      */
     private String introduce;
 
     /**
-     * ç²‰ä¸æ•°é‡
+     * ç²?ä¸æ?°é?
      */
     private Integer fans;
 
     /**
-     * å…³æ³¨çš„äººçš„æ•°é‡?
+     * å?³æ³¨ç??äººç??æ?°é??
      */
     private Integer followee;
 
     /**
-     * æ€§åˆ«ï¼?ï¼šç”·ï¼?ï¼šå¥³
+     * æ?§å?«ï¼?ï¼?ç?·ï¼?ï¼?å¥³
      */
     private Boolean gender;
 
     /**
-     * ç”Ÿæ—¥
+     * ç??æ?¥
      */
     private LocalDate birthday;
 
     /**
-     * ç§¯åˆ†
+     * ç§¯å??
      */
     private Integer credits;
 
     /**
-     * ä¼šå‘˜çº§åˆ«ï¼?~9çº?0ä»£è¡¨æœªå¼€é€šä¼šå‘?
+     * ä¼?å??çº§å?«ï¼?~9çº?0ä»£è¡¨æ?ªå¼?é??ä¼?å??
      */
     private Boolean level;
 
+    /** ??????????? */
+    private Boolean hideFollowing;
+
     /**
-     * åˆ›å»ºæ—¶é—´
+     * å??å»ºæ?¶é?´
      */
     private LocalDateTime createTime;
 
     /**
-     * æ›´æ–°æ—¶é—´
+     * æ?´æ?°æ?¶é?´
      */
     private LocalDateTime updateTime;
 

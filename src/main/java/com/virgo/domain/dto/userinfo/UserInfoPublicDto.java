@@ -16,4 +16,6 @@ public class UserInfoPublicDto {
     private LocalDate birthday;
     private Integer credits;
     private Boolean level;
+    /** 是否对他人隐藏关注列表 */
+    private Boolean hideFollowing;
 }

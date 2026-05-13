@@ -38,7 +38,8 @@ export function UserPage() {
       if (u.success) setProfile(u.data ?? null);
       const ui = await request<UserInfoDTO | null>(`/user/info/${uid}`);
       if (cancelled) return;
-      if (ui.success) setUserInfo(ui.data ?? null);
+      const loadedInfo = ui.success ? ((ui.data as UserInfoDTO | null) ?? null) : null;
+      if (ui.success) setUserInfo(loadedInfo);
       else setUserInfo(null);
       const b = await request<Blog[]>('/blog/of/user', { params: { id: uid, current } });
       if (cancelled) return;
@@ -54,8 +55,13 @@ export function UserPage() {
         setFollowing(null);
       }
       if (me) {
-        const fl = await request<UserDTO[]>(`/follow/following/${uid}`);
-        if (!cancelled && fl.success) setFollowingList((fl.data as UserDTO[]) || []);
+        const hiddenFromViewer = me.id !== uid && loadedInfo?.hideFollowing === true;
+        if (!hiddenFromViewer) {
+          const fl = await request<UserDTO[]>(`/follow/following/${uid}`);
+          if (!cancelled && fl.success) setFollowingList((fl.data as UserDTO[]) || []);
+        } else if (!cancelled) {
+          setFollowingList([]);
+        }
       } else if (!cancelled) {
         setFollowingList([]);
       }
@@ -114,8 +120,12 @@ export function UserPage() {
           <div className="muted" style={{ marginBottom: 10, fontWeight: 600 }}>
             关注列表
           </div>
-          {followingList.length === 0 && <span className="muted">暂无</span>}
-          {followingList.map((u) => (
+          {me?.id !== uid && userInfo?.hideFollowing === true ? (
+            <span className="muted">该用户已隐藏关注列表，仅本人可见。</span>
+          ) : followingList.length === 0 ? (
+            <span className="muted">暂无</span>
+          ) : (
+            followingList.map((u) => (
             <div
               key={u.id}
               className="row"
@@ -145,7 +155,8 @@ export function UserPage() {
                 )
               ) : null}
             </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -167,6 +178,7 @@ export function UserPage() {
             <div>
               积分：{userInfo.credits ?? 0} · 会员：{userInfo.level === true ? '已开通' : userInfo.level === false ? '未开通' : String(userInfo.level ?? '—')}
             </div>
+            <div>关注列表：{userInfo.hideFollowing ? '仅本人可见（已隐藏）' : '公开'}</div>
           </div>
         )}
       </div>

@@ -18,6 +18,7 @@ import com.virgo.mapper.UserMapper;
 import com.virgo.security.CurrentUserAccessor;
 import com.virgo.service.IUserInfoService;
 import com.virgo.service.IUserService;
+import com.virgo.service.storage.UserAvatarStorage;
 import com.virgo.utils.RegexUtils;
 import com.virgo.web.assembly.WebModels;
 import jakarta.servlet.http.HttpSession;
@@ -30,6 +31,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static com.virgo.utils.RedisConstants.LOGIN_CODE_KEY;
@@ -53,8 +56,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     private final StringRedisTemplate stringRedisTemplate;
     private final PasswordEncoder passwordEncoder;
     private final IUserInfoService userInfoService;
+    private final UserAvatarStorage userAvatarStorage;
 
-    @Override
+    private static final long MAX_AVATAR_BYTES = 5 * 1024 * 1024;
     public void sendCode(String phone, HttpSession session) {
         if (RegexUtils.isPhoneInvalid(phone)) {
             throw new BizException("\u624b\u673a\u53f7\u683c\u5f0f\u9519\u8bef");
@@ -184,6 +188,84 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         stringRedisTemplate.delete(LOGIN_CODE_KEY + user.getPhone());
         String encoded = passwordEncoder.encode(newPassword);
         lambdaUpdate().eq(User::getId, id).set(User::getPassword, encoded).update();
+    }
+
+    @Override
+    public String updateMyAvatar(MultipartFile file) {
+        validateAvatarFile(file);
+        Long id = CurrentUserAccessor.require().getId();
+        User user = getById(id);
+        if (user == null) {
+            throw new BizException("\u7528\u6237\u4e0d\u5b58\u5728");
+        }
+        String previous = user.getIcon();
+        String stored;
+        try {
+            stored = userAvatarStorage.store(file);
+        } catch (java.io.IOException e) {
+            throw new BizException("\u5934\u50cf\u4e0a\u4f20\u5931\u8d25", e);
+        }
+        if (stored.length() > 255) {
+            throw new BizException("\u5934\u50cf\u5730\u5740\u8fc7\u957f");
+        }
+        tryDeletePreviousAvatarIfOwned(previous);
+        lambdaUpdate().eq(User::getId, id).set(User::getIcon, stored).update();
+        syncPrincipalIcon(stored);
+        return stored;
+    }
+
+    private void validateAvatarFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BizException("\u8bf7\u9009\u62e9\u56fe\u7247\u6587\u4ef6");
+        }
+        if (file.getSize() > MAX_AVATAR_BYTES) {
+            throw new BizException("\u56fe\u7247\u4e0d\u80fd\u8d85\u8fc7 5MB");
+        }
+        String ct = file.getContentType();
+        boolean ok = StrUtil.isNotBlank(ct)
+                && (ct.contains("image/jpeg") || ct.contains("image/png") || ct.contains("image/webp") || ct.contains("image/gif"));
+        if (!ok) {
+            String name = file.getOriginalFilename();
+            if (StrUtil.isNotBlank(name)) {
+                String suf = StrUtil.subAfter(name, ".", true).toLowerCase();
+                ok = Set.of("jpg", "jpeg", "png", "webp", "gif").contains(suf);
+            }
+        }
+        if (!ok) {
+            throw new BizException("\u4ec5\u652f\u6301 jpg\u3001png\u3001webp\u3001gif \u56fe\u7247");
+        }
+    }
+
+    private void tryDeletePreviousAvatarIfOwned(String previous) {
+        if (!StrUtil.isNotBlank(previous) || !previous.contains("/avatars/")) {
+            return;
+        }
+        try {
+            userAvatarStorage.delete(previous);
+        } catch (Exception ex) {
+            log.warn("delete previous avatar skipped: {}", ex.getMessage());
+        }
+    }
+
+    private void syncPrincipalIcon(String icon) {
+        CurrentUser cu = CurrentUserAccessor.get();
+        if (cu == null) {
+            return;
+        }
+        String v = icon == null ? "" : icon;
+        cu.setIcon(v);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof UsernamePasswordAuthenticationToken token)) {
+            return;
+        }
+        UsernamePasswordAuthenticationToken replacement =
+                new UsernamePasswordAuthenticationToken(cu, token.getCredentials(), token.getAuthorities());
+        replacement.setDetails(token.getDetails());
+        SecurityContextHolder.getContext().setAuthentication(replacement);
+        Object cred = token.getCredentials();
+        if (cred instanceof String tk && StrUtil.isNotBlank(tk)) {
+            stringRedisTemplate.opsForHash().put(LOGIN_USER_KEY + tk, "icon", v);
+        }
     }
 
     private void syncPrincipalNickName(String nickName) {

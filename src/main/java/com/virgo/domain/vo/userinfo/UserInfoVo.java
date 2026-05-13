@@ -16,4 +16,5 @@ public class UserInfoVo {
     private LocalDate birthday;
     private Integer credits;
     private Boolean level;
+    private Boolean hideFollowing;
 }

@@ -7,8 +7,10 @@ import com.virgo.domain.dto.follow.FollowingUserDto;
 import com.virgo.domain.dto.follow.MutualFollowUserDto;
 import com.virgo.domain.po.Follow;
 import com.virgo.domain.po.User;
+import com.virgo.domain.po.UserInfo;
 import com.virgo.mapper.FollowMapper;
 import com.virgo.service.IFollowService;
+import com.virgo.service.IUserInfoService;
 import com.virgo.service.IUserService;
 import com.virgo.security.CurrentUserAccessor;
 import jakarta.annotation.Resource;
@@ -30,6 +32,8 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private IUserService userService;
+    @Resource
+    private IUserInfoService userInfoService;
 
     @Override
     public void follow(Long followUserId, Boolean isFollow) {
@@ -77,6 +81,13 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
 
     @Override
     public List<FollowingUserDto> listFollowing(Long userId) {
+        Long viewerId = CurrentUserAccessor.require().getId();
+        if (!viewerId.equals(userId)) {
+            UserInfo targetInfo = userInfoService.getById(userId);
+            if (targetInfo != null && Boolean.TRUE.equals(targetInfo.getHideFollowing())) {
+                return Collections.emptyList();
+            }
+        }
         List<Follow> follows = query().eq("user_id", userId).orderByDesc("create_time").list();
         if (follows.isEmpty()) {
             return Collections.emptyList();
@@ -90,7 +101,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
                 .map(user -> BeanUtil.copyProperties(user, FollowingUserDto.class))
                 .collect(Collectors.toList());
 
-        Long viewerId = CurrentUserAccessor.require().getId();
         if (viewerId.equals(userId)) {
             for (FollowingUserDto u : result) {
                 u.setIsFollow(true);

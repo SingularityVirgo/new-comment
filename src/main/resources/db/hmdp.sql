@@ -1226,6 +1226,7 @@ CREATE TABLE `tb_user_info`  (
   `birthday` date NULL DEFAULT NULL COMMENT '生日',
   `credits` int(8) UNSIGNED NULL DEFAULT 0 COMMENT '积分',
   `level` tinyint(1) UNSIGNED NULL DEFAULT 0 COMMENT '会员级别，0~9级,0代表未开通会员',
+  `hide_following` tinyint(1) UNSIGNED NOT NULL DEFAULT 0 COMMENT '是否对他人隐藏关注列表，1隐藏',
   `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`user_id`) USING BTREE
@@ -1234,6 +1235,21 @@ CREATE TABLE `tb_user_info`  (
 -- ----------------------------
 -- Records of tb_user_info
 -- ----------------------------
+-- 为 tb_user 中尚未有扩展资料的用户批量补全（可重复执行：仅插入不存在的 user_id）
+INSERT INTO `tb_user_info` (`user_id`, `city`, `introduce`, `fans`, `followee`, `gender`, `birthday`, `credits`, `level`, `hide_following`)
+SELECT
+  u.`id`,
+  ELT(1 + (u.`id` % 5), '杭州', '上海', '北京', '深圳', '成都'),
+  LEFT(CONCAT('探店与笔记测试账号 · ', IFNULL(NULLIF(TRIM(u.`nick_name`), ''), CONCAT('用户', u.`id`)), ' · 欢迎关注。'), 128),
+  ((u.`id` * 13 + 7) % 500),
+  ((u.`id` * 5 + 3) % 80),
+  (u.`id` % 2),
+  DATE_ADD('1992-01-01', INTERVAL ((u.`id` * 37) % 4000) DAY),
+  ((u.`id` * 19) % 2000),
+  (u.`id` % 4),
+  IF((u.`id` % 17) = 0, 1, 0)
+FROM `tb_user` u
+WHERE NOT EXISTS (SELECT 1 FROM `tb_user_info` i WHERE i.`user_id` = u.`id`);
 
 -- ----------------------------
 -- Table structure for tb_voucher

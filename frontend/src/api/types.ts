@@ -8,6 +8,8 @@ export interface UserInfoDTO {
   birthday?: string;
   credits?: number;
   level?: boolean;
+  /** true 时他人不可见关注列表 */
+  hideFollowing?: boolean;
 }
 
 export interface UserDTO {

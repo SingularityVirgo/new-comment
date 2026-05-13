@@ -8,6 +8,10 @@ server:
 spring:
   application:
     name: virgo
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/comment?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
@@ -30,7 +34,7 @@ spring:
 mybatis-plus:
   type-aliases-package: com.virgo.domain.po
 
-# 阿里云 OSS（笔记图片）。AccessKey 不要写在本文件：在系统 / IDE 运行配置 / Docker 中设置环境变量即可，
+# 阿里云 OSS（笔记图片、用户头像 uploads/avatars/）。AccessKey 不要写在本文件：在系统 / IDE 运行配置 / Docker 中设置环境变量即可，
 # Spring 会按前缀绑定到 aliyun.oss（与 OssProperties 字段对应）：
 #   ALIYUN_OSS_ACCESS_KEY_ID、ALIYUN_OSS_ACCESS_KEY_SECRET
 # 启用 OSS（PowerShell 示例）:

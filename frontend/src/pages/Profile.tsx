@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { assetUrl, request, requestJson } from '../api/request';
+import { assetUrl, apiBase, request, requestJson } from '../api/request';
 import type { Blog } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 
@@ -36,8 +36,14 @@ export function Profile() {
 
   const [extCity, setExtCity] = useState('');
   const [extIntro, setExtIntro] = useState('');
+  const [extGender, setExtGender] = useState<boolean | null>(null);
+  const [extBirthday, setExtBirthday] = useState('');
+  const [extHideFollowing, setExtHideFollowing] = useState(false);
   const [extMsg, setExtMsg] = useState('');
   const [extBusy, setExtBusy] = useState(false);
+
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarMsg, setAvatarMsg] = useState('');
 
   useEffect(() => {
     void (async () => {
@@ -48,9 +54,14 @@ export function Profile() {
 
   useEffect(() => {
     if (user?.nickName) setNickEdit(user.nickName);
-    const info = user?.userInfo;
-    setExtCity(info?.city ?? '');
-    setExtIntro(info?.introduce ?? '');
+    const inf = user?.userInfo;
+    setExtCity(inf?.city ?? '');
+    setExtIntro(inf?.introduce ?? '');
+    if (inf?.gender === true) setExtGender(true);
+    else if (inf?.gender === false) setExtGender(false);
+    else setExtGender(null);
+    setExtBirthday(inf?.birthday ?? '');
+    setExtHideFollowing(!!inf?.hideFollowing);
   }, [user]);
 
   async function sign() {
@@ -115,13 +126,52 @@ export function Profile() {
     e.preventDefault();
     setExtMsg('');
     setExtBusy(true);
-    const r = await requestJson<unknown>('/user/info', { city: extCity, introduce: extIntro }, 'PUT');
+    const r = await requestJson<unknown>(
+      '/user/info',
+      {
+        city: extCity,
+        introduce: extIntro,
+        gender: extGender,
+        birthday: extBirthday || null,
+        hideFollowing: extHideFollowing,
+      },
+      'PUT',
+    );
     setExtBusy(false);
     if (!r.success) {
       setExtMsg(r.errorMsg || '保存失败');
       return;
     }
     setExtMsg('扩展资料已保存');
+    await refresh();
+  }
+
+  async function onAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setAvatarMsg('');
+    setAvatarBusy(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${apiBase()}/user/me/avatar`, {
+      method: 'POST',
+      headers: token ? { authorization: token } : {},
+      body: fd,
+    });
+    let json: { success: boolean; data?: string; errorMsg?: string } = { success: false, errorMsg: '响应解析失败' };
+    try {
+      json = (await res.json()) as typeof json;
+    } catch {
+      /* ignore */
+    }
+    setAvatarBusy(false);
+    if (!json.success) {
+      setAvatarMsg(json.errorMsg || '上传失败');
+      return;
+    }
+    setAvatarMsg('头像已更新');
     await refresh();
   }
 
@@ -145,6 +195,26 @@ export function Profile() {
               <div>注册时间：{fmtTime(user.createTime)}</div>
               <div>资料更新时间：{fmtTime(user.updateTime)}</div>
             </div>
+            <div className="row" style={{ marginTop: 10, alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <label className="btn" style={{ cursor: avatarBusy ? 'wait' : 'pointer' }}>
+                {avatarBusy ? '上传中…' : '更换头像'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+                  hidden
+                  onChange={(e) => void onAvatarFile(e)}
+                  disabled={avatarBusy}
+                />
+              </label>
+              <span className="muted" style={{ fontSize: '0.85rem', maxWidth: 280 }}>
+                存储至阿里云 OSS 路径 avatars/（需设置 ALIYUN_OSS_ENABLED=true 及密钥）；未启用 OSS 时写入本地上传目录。
+              </span>
+            </div>
+            {avatarMsg && (
+              <div className={avatarMsg.includes('失败') ? 'error-banner' : 'success-banner'} style={{ marginTop: 8 }}>
+                {avatarMsg}
+              </div>
+            )}
             <div className="row" style={{ marginTop: 12, flexWrap: 'wrap' }}>
               <Link to={`/user/${user.id}`} className="btn">
                 查看我的公开主页
@@ -191,6 +261,7 @@ export function Profile() {
           <div>
             积分：{info?.credits ?? 0} · 会员级别：{info?.level === true ? '已开通' : info?.level === false ? '未开通' : String(info?.level ?? '—')}
           </div>
+          <div>关注列表：{info?.hideFollowing ? '已对他人隐藏（仅本人主页可见列表）' : '对他人可见'}</div>
         </div>
       </div>
 
@@ -262,6 +333,33 @@ export function Profile() {
           <div className="field">
             <label htmlFor="intro">个人介绍（最多 128 字）</label>
             <textarea id="intro" className="input" value={extIntro} onChange={(e) => setExtIntro(e.target.value)} rows={3} maxLength={128} style={{ resize: 'vertical' }} />
+          </div>
+          <div className="field">
+            <span id="gender-label">性别</span>
+            <div className="row" style={{ marginTop: 8, gap: 12, flexWrap: 'wrap' }} role="group" aria-labelledby="gender-label">
+              <label className="row" style={{ gap: 6, cursor: 'pointer' }}>
+                <input type="radio" name="gender" checked={extGender === false} onChange={() => setExtGender(false)} />
+                男
+              </label>
+              <label className="row" style={{ gap: 6, cursor: 'pointer' }}>
+                <input type="radio" name="gender" checked={extGender === true} onChange={() => setExtGender(true)} />
+                女
+              </label>
+              <label className="row" style={{ gap: 6, cursor: 'pointer' }}>
+                <input type="radio" name="gender" checked={extGender === null} onChange={() => setExtGender(null)} />
+                不填
+              </label>
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="birthday">生日</label>
+            <input id="birthday" type="date" className="input" value={extBirthday} onChange={(e) => setExtBirthday(e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="row" style={{ gap: 10, cursor: 'pointer', alignItems: 'center' }}>
+              <input type="checkbox" checked={extHideFollowing} onChange={(e) => setExtHideFollowing(e.target.checked)} />
+              对他人隐藏我的关注列表（开启后仅自己能在主页看到关注的人）
+            </label>
           </div>
           <button type="submit" className="btn btn-primary" disabled={extBusy}>
             {extBusy ? '保存中…' : '保存扩展资料'}

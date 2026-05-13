@@ -11,4 +11,6 @@ public class UserInfoUpdateCommand {
     private String introduce;
     private Boolean gender;
     private LocalDate birthday;
+    /** null 表示不修改；true 对他人隐藏关注列表 */
+    private Boolean hideFollowing;
 }

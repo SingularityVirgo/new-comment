@@ -8,6 +8,7 @@ import com.virgo.domain.dto.user.UserProfileDto;
 import com.virgo.domain.po.User;
 import com.virgo.domain.vo.user.MyAccountVo;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Optional;
 
@@ -34,4 +35,9 @@ public interface IUserService extends IService<User> {
     void updateMyNickName(NickNameUpdateCommand command);
 
     void changeMyPassword(PasswordChangeCommand command, HttpSession session);
+
+    /**
+     * 上传并更新当前用户头像（OSS 或本地，由 {@link com.virgo.service.storage.UserAvatarStorage} 决定），返回新头像地址（完整 URL 或站内路径）。
+     */
+    String updateMyAvatar(MultipartFile file);
 }
