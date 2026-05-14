@@ -15,17 +15,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.redis.connection.ReturnType;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.connection.stream.StreamReadOptions;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.data.redis.domain.stream.ReadOffset;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -35,9 +35,7 @@ import static com.virgo.utils.RedisConstants.SECKILL_STREAM_KEY;
 import static com.virgo.utils.RedisConstants.VOUCHER_ORDER_SET_KEY;
 import static com.virgo.utils.RedisConstants.VOUCHER_STOCK_KEY;
 
-/**
- * \u4f18\u60e0\u5238\u8ba2\u5355\u670d\u52a1\u5b9e\u73b0\u3002
- */
+
 @Slf4j
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
@@ -52,12 +50,14 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    private static final DefaultRedisScript<Long> SECKILL_SCRIPT;
+    private static final byte[] SECKILL_LUA_BYTES;
 
     static {
-        SECKILL_SCRIPT = new DefaultRedisScript<>();
-        SECKILL_SCRIPT.setLocation(new ClassPathResource("seckill.lua"));
-        SECKILL_SCRIPT.setResultType(Long.class);
+        try {
+            SECKILL_LUA_BYTES = new ClassPathResource("seckill.lua").getContentAsByteArray();
+        } catch (IOException e) {
+            throw new ExceptionInInitializerError(e);
+        }
     }
 
     private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor();
@@ -70,7 +70,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     private void ensureSeckillStreamGroup() {
         try {
-            stringRedisTemplate.opsForStream().createGroup(SECKILL_STREAM_KEY, ReadOffset.from("0"), "g1");
+            stringRedisTemplate.opsForStream().createGroup(
+                    SECKILL_STREAM_KEY,
+                    org.springframework.data.redis.connection.stream.ReadOffset.from("0"),
+                    "g1");
         } catch (Exception e) {
             String m = e.getMessage() != null ? e.getMessage() : "";
             if (!m.contains("BUSYGROUP")) {
@@ -92,7 +95,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     List<MapRecord<String, Object, Object>> list = stringRedisTemplate.opsForStream().read(
                             Consumer.from("g1", "c1"),
                             StreamReadOptions.empty().count(1).block(Duration.ofSeconds(2)),
-                            StreamOffset.create(SECKILL_STREAM_KEY, ReadOffset.lastConsumed())
+                            StreamOffset.create(
+                                    SECKILL_STREAM_KEY,
+                                    org.springframework.data.redis.connection.stream.ReadOffset.lastConsumed())
                     );
                     if (list == null || list.isEmpty()) {
                         continue;
@@ -118,7 +123,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     List<MapRecord<String, Object, Object>> list = stringRedisTemplate.opsForStream().read(
                             Consumer.from("g1", "c1"),
                             StreamReadOptions.empty().count(1),
-                            StreamOffset.create(SECKILL_STREAM_KEY, ReadOffset.from("0"))
+                            StreamOffset.create(
+                                    SECKILL_STREAM_KEY,
+                                    org.springframework.data.redis.connection.stream.ReadOffset.from("0"))
                     );
                     if (list == null || list.isEmpty()) {
                         break;
@@ -170,26 +177,23 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Override
     public Long seckillVoucher(Long voucherId) {
         Long userId = CurrentUserAccessor.require().getId();
-        long orderId = redisIdWorker.nextId("order");
-
-        List<String> keys = new ArrayList<>();
-        keys.add(VOUCHER_STOCK_KEY + voucherId);
-        keys.add(VOUCHER_ORDER_SET_KEY + voucherId);
-        keys.add(SECKILL_STREAM_KEY);
-
-        List<String> args = new ArrayList<>();
-        args.add(userId.toString());
-        args.add(String.valueOf(orderId));
-
-        Long result = stringRedisTemplate.execute(
-                SECKILL_SCRIPT,
-                keys,
-                args.toArray()
-        );
-        int r = result.intValue();
-        if (r != 0) {
-            throw new BizException(r == 1 ? "\u5e93\u5b58\u4e0d\u8db3" : "\u4e0d\u80fd\u91cd\u590d\u4e0b\u5355");
-        }
-        return orderId;
+        var strSer = stringRedisTemplate.getStringSerializer();
+        return stringRedisTemplate.execute((RedisCallback<Long>) connection -> {
+            long orderId = redisIdWorker.nextIdUsingConnection("order", connection);
+            byte[] k0 = strSer.serialize(VOUCHER_STOCK_KEY + voucherId);
+            byte[] k1 = strSer.serialize(VOUCHER_ORDER_SET_KEY + voucherId);
+            byte[] k2 = strSer.serialize(SECKILL_STREAM_KEY);
+            byte[] a0 = strSer.serialize(userId.toString());
+            byte[] a1 = strSer.serialize(Long.toString(orderId));
+            if (k0 == null || k1 == null || k2 == null || a0 == null || a1 == null) {
+                throw new IllegalStateException("redis key/arg serialize failed");
+            }
+            Long lua = connection.eval(SECKILL_LUA_BYTES, ReturnType.INTEGER, 3, k0, k1, k2, a0, a1);
+            int r = lua == null ? -1 : lua.intValue();
+            if (r != 0) {
+                throw new BizException(r == 1 ? "\u5e93\u5b58\u4e0d\u8db3" : "\u4e0d\u80fd\u91cd\u590d\u4e0b\u5355");
+            }
+            return orderId;
+        });
     }
 }

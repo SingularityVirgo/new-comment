@@ -5,6 +5,11 @@ server:
       charset: UTF-8
       enabled: true
       force: true
+  tomcat:
+    threads:
+      # 秒杀等短请求易占满默认 200 线程；按单机 Redis 吞吐适度放大
+      max: 400
+      min-spare: 32
 spring:
   application:
     name: virgo
@@ -27,9 +32,11 @@ spring:
       password: 123456
       lettuce:
         pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 0
+          # 原 8 过小：鉴权 + RedisIdWorker + Lua 单次秒杀至少 3 次 Redis，易在池上排队
+          max-active: 128
+          max-idle: 64
+          min-idle: 16
+          max-wait: 2s
         shutdown-timeout: 100ms
 mybatis-plus:
   type-aliases-package: com.virgo.domain.po

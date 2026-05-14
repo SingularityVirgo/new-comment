@@ -1,6 +1,7 @@
 package com.virgo.utils;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +36,26 @@ public class RedisIdWorker {
         long count = stringRedisTemplate.opsForValue().increment("icr:" + keyPrefix + ":" + date);
 
         // 3.拼接并返回
+        return timestamp << COUNT_BITS | count;
+    }
+
+    /**
+     * 在同一条 Redis 物理连接上完成序列号自增，便于与后续 EVAL 合并为一次连接借用，减轻 Lettuce 池竞争。
+     */
+    public long nextIdUsingConnection(String keyPrefix, RedisConnection connection) {
+        LocalDateTime now = LocalDateTime.now();
+        long nowSecond = now.toEpochSecond(ZoneOffset.UTC);
+        long timestamp = nowSecond - BEGIN_TIMESTAMP;
+        String date = now.format(DateTimeFormatter.ofPattern("yyyy:MM:dd"));
+        String key = "icr:" + keyPrefix + ":" + date;
+        byte[] rawKey = stringRedisTemplate.getStringSerializer().serialize(key);
+        if (rawKey == null) {
+            throw new IllegalStateException("redis key serialize failed");
+        }
+        Long count = connection.incr(rawKey);
+        if (count == null) {
+            throw new IllegalStateException("redis incr returned null");
+        }
         return timestamp << COUNT_BITS | count;
     }
 }

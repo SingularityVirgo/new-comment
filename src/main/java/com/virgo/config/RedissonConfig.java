@@ -20,6 +20,9 @@ public class RedissonConfig {
         if (password != null && !password.isBlank()) {
             server.setPassword(password);
         }
+        // 与 Lettuce 池同量级，避免异步下单抢锁时 Redisson 连接成为短板
+        server.setConnectionPoolSize(128);
+        server.setConnectionMinimumIdleSize(32);
         return Redisson.create(config);
     }
 }
