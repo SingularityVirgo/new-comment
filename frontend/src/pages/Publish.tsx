@@ -3,6 +3,9 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiBase, request, requestJson } from '../api/request';
 import type { Blog, Shop } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { useDebouncedSubmit } from '../hooks/useDebouncedSubmit';
+
+const PUBLISH_DRAFT_KEY = 'mzy-publish-draft-v1';
 
 export function Publish() {
   const { user } = useAuth();
@@ -24,9 +27,52 @@ export function Publish() {
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const { locked: submitLocked, run: runSubmit } = useDebouncedSubmit();
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftLoaded = useRef(false);
+
+  useEffect(() => {
+    if (draftLoaded.current) return;
+    draftLoaded.current = true;
+    try {
+      const raw = localStorage.getItem(PUBLISH_DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as { title?: string; content?: string; images?: string[]; shopId?: string };
+      if (typeof d.title === 'string') setTitle(d.title);
+      if (typeof d.content === 'string') setContent(d.content);
+      if (Array.isArray(d.images)) setImages(d.images);
+      const sidNow = new URLSearchParams(window.location.search).get('shopId');
+      if (d.shopId && !sidNow) {
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.set('shopId', d.shopId!);
+            return next;
+          },
+          { replace: true },
+        );
+      }
+    } catch {
+      /* ignore */
+    }
+    // 仅挂载时恢复草稿，避免编辑过程中 URL 变化误触发
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      try {
+        localStorage.setItem(
+          PUBLISH_DRAFT_KEY,
+          JSON.stringify({ title, content, images, shopId: paramShopId || null }),
+        );
+      } catch {
+        /* quota */
+      }
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [title, content, images, paramShopId]);
 
   useEffect(() => {
     if (!paramShopId) {
@@ -150,17 +196,29 @@ export function Publish() {
       setMsg('请先选择关联店铺（搜索店名或从商铺页进入）');
       return;
     }
-    setSubmitting(true);
-    const blog: Partial<Blog> = {
-      shopId: sid,
-      title,
-      content,
-      images: images.join(','),
-    };
-    const r = await requestJson<number>('/blog', blog);
-    setSubmitting(false);
-    if (!r.success) setMsg(r.errorMsg || '发布失败');
-    else nav(`/blog/${r.data}`);
+    try {
+      await runSubmit(async () => {
+        const blog: Partial<Blog> = {
+          shopId: sid,
+          title,
+          content,
+          images: images.join(','),
+        };
+        const r = await requestJson<number>('/blog', blog);
+        if (!r.success) {
+          setMsg(r.errorMsg || '发布失败');
+          return;
+        }
+        try {
+          localStorage.removeItem(PUBLISH_DRAFT_KEY);
+        } catch {
+          /* ignore */
+        }
+        nav(`/blog/${r.data}`);
+      });
+    } catch {
+      /* 500ms 内防重复提交 */
+    }
   }
 
   if (!user) return null;
@@ -175,6 +233,9 @@ export function Publish() {
       </header>
       <div className="card">
         <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>笔记表单</h2>
+        <p className="muted" style={{ marginTop: 0, marginBottom: 12 }}>
+          标题与正文会每 0.5s 自动写入浏览器本地草稿（localStorage），意外关闭可恢复。
+        </p>
         {msg && <div className="error-banner">{msg}</div>}
         <form onSubmit={(e) => void submit(e)}>
           <div className="field">
@@ -295,8 +356,8 @@ export function Publish() {
               </ul>
             )}
           </div>
-          <button type="submit" className="btn btn-primary" disabled={submitting}>
-            {submitting ? '提交中…' : '发布笔记'}
+          <button type="submit" className="btn btn-primary" disabled={submitLocked}>
+            {submitLocked ? '提交中…' : '发布笔记'}
           </button>
         </form>
       </div>

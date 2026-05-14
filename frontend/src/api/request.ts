@@ -36,18 +36,16 @@ function buildUrl(path: string, params?: Record<string, string | number | undefi
   return url;
 }
 
-export async function request<T>(
-  path: string,
-  init: RequestInit & { params?: Record<string, string | number | undefined | null> } = {},
-): Promise<ApiResult<T>> {
-  const { params, headers, ...rest } = init;
-  const url = buildUrl(path, params);
+/** GET 并发去重：相同 URL 在飞行中合并为单次请求 */
+const inflightGet = new Map<string, Promise<ApiResult<unknown>>>();
+
+async function doFetch<T>(url: string, init: RequestInit): Promise<ApiResult<T>> {
   const token = localStorage.getItem('token');
   const res = await fetch(url, {
-    ...rest,
+    ...init,
     headers: {
       Accept: 'application/json',
-      ...(headers as Record<string, string>),
+      ...(init.headers as Record<string, string>),
       ...(token ? { authorization: token } : {}),
     },
   });
@@ -66,6 +64,27 @@ export async function request<T>(
   }
 
   return json;
+}
+
+export async function request<T>(
+  path: string,
+  init: RequestInit & { params?: Record<string, string | number | undefined | null> } = {},
+): Promise<ApiResult<T>> {
+  const { params, headers, ...rest } = init;
+  const url = buildUrl(path, params);
+  const method = (rest.method || 'GET').toUpperCase();
+
+  if (method === 'GET') {
+    const existing = inflightGet.get(url);
+    if (existing) return existing as Promise<ApiResult<T>>;
+    const p = doFetch<T>(url, { ...rest, headers }).finally(() => {
+      if (inflightGet.get(url) === p) inflightGet.delete(url);
+    });
+    inflightGet.set(url, p as Promise<ApiResult<unknown>>);
+    return p;
+  }
+
+  return doFetch<T>(url, { ...rest, headers });
 }
 
 export async function requestJson<T>(path: string, body: unknown, method = 'POST'): Promise<ApiResult<T>> {

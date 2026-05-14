@@ -1,5 +1,7 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { PrefetchNavLink } from './PrefetchNavLink';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 function linkClass({ isActive }: { isActive: boolean }) {
   return isActive ? 'active' : undefined;
@@ -7,39 +9,48 @@ function linkClass({ isActive }: { isActive: boolean }) {
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const online = useOnlineStatus();
 
   return (
     <div className="app-shell">
-      <header className="top-nav">
-        <NavLink to="/discover" className="brand" end={false}>
+      <a href="#main-content" className="skip-link">
+        跳到正文
+      </a>
+      {!online && (
+        <div className="offline-banner" role="status">
+          当前处于离线或网络不可用，页面将尽量展示已缓存的数据；联网后自动恢复。
+        </div>
+      )}
+      <header className="top-nav" role="navigation" aria-label="主导航">
+        <PrefetchNavLink to="/discover" className="brand" end={false}>
           <span className="brand-mark" aria-hidden>
             ✦
           </span>
           mzy-comment
-        </NavLink>
-        <NavLink to="/discover" className={linkClass}>
+        </PrefetchNavLink>
+        <PrefetchNavLink to="/discover" className={linkClass}>
           探店
-        </NavLink>
-        <NavLink to="/shops" className={linkClass}>
+        </PrefetchNavLink>
+        <PrefetchNavLink to="/shops" className={linkClass}>
           商铺
-        </NavLink>
+        </PrefetchNavLink>
         {user && (
           <>
-            <NavLink to="/publish" className={linkClass}>
+            <PrefetchNavLink to="/publish" className={linkClass}>
               发笔记
-            </NavLink>
-            <NavLink to="/feed" className={linkClass}>
+            </PrefetchNavLink>
+            <PrefetchNavLink to="/feed" className={linkClass}>
               关注
-            </NavLink>
-            <NavLink to="/profile" className={linkClass}>
+            </PrefetchNavLink>
+            <PrefetchNavLink to="/profile" className={linkClass}>
               我的
-            </NavLink>
+            </PrefetchNavLink>
           </>
         )}
         {!user && (
-          <NavLink to="/login" className={linkClass}>
+          <PrefetchNavLink to="/login" className={linkClass}>
             登录
-          </NavLink>
+          </PrefetchNavLink>
         )}
         {user && (
           <button type="button" className="btn btn-ghost" onClick={() => logout()}>
@@ -47,7 +58,9 @@ export function Layout() {
           </button>
         )}
       </header>
-      <Outlet />
+      <main id="main-content" tabIndex={-1}>
+        <Outlet />
+      </main>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { request, requestJson } from '../api/request';
 import { useAuth } from '../auth/AuthContext';
+import { useDebouncedSubmit } from '../hooks/useDebouncedSubmit';
 
 type LoginMode = 'code' | 'password';
 
@@ -13,7 +14,7 @@ export function Login() {
   const [msg, setMsg] = useState('');
   const [msgOk, setMsgOk] = useState(false);
   const [sending, setSending] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const { locked: submitLocked, run: runLogin } = useDebouncedSubmit();
   const nav = useNavigate();
   const loc = useLocation();
   const { refresh, setToken } = useAuth();
@@ -37,19 +38,23 @@ export function Login() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBanner('', false);
-    setSubmitting(true);
-    const r =
-      mode === 'code'
-        ? await requestJson<string>('/user/login', { phone, code })
-        : await requestJson<string>('/user/login', { phone, password });
-    setSubmitting(false);
-    if (!r.success || r.data == null) {
-      setBanner(r.errorMsg || '登录失败', false);
-      return;
+    try {
+      await runLogin(async () => {
+        const r =
+          mode === 'code'
+            ? await requestJson<string>('/user/login', { phone, code })
+            : await requestJson<string>('/user/login', { phone, password });
+        if (!r.success || r.data == null) {
+          setBanner(r.errorMsg || '登录失败', false);
+          return;
+        }
+        setToken(r.data);
+        await refresh();
+        nav(from, { replace: true });
+      });
+    } catch {
+      /* 提交冷却中 */
     }
-    setToken(r.data);
-    await refresh();
-    nav(from, { replace: true });
   }
 
   return (
@@ -144,8 +149,8 @@ export function Login() {
                 />
               </div>
             )}
-            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', marginTop: 10 }}>
-              {submitting ? '登录中…' : '进入应用'}
+            <button type="submit" className="btn btn-primary" disabled={submitLocked} style={{ width: '100%', marginTop: 10 }}>
+              {submitLocked ? '登录中…' : '进入应用'}
             </button>
           </form>
         </div>

@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { assetUrl, request } from '../api/request';
 import type { Blog } from '../api/types';
+import { EmptyState } from '../components/EmptyState';
+import { LazyImage } from '../components/LazyImage';
+import { PageSkeleton } from '../components/PageSkeleton';
+import { useStaleResource } from '../hooks/useStaleResource';
 
 function firstImage(images: string): string {
   const u = images?.split(',')?.[0]?.trim();
@@ -9,47 +13,39 @@ function firstImage(images: string): string {
 }
 
 export function Discover() {
-  const [list, setList] = useState<Blog[]>([]);
+  const nav = useNavigate();
   const [current, setCurrent] = useState(1);
-  const [err, setErr] = useState('');
-  const [loading, setLoading] = useState(true);
+  const key = useMemo(() => `blog-hot-${current}`, [current]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const r = await request<Blog[]>('/blog/hot', { params: { current } });
-      if (cancelled) return;
-      setLoading(false);
-      if (!r.success) setErr(r.errorMsg || '加载失败');
-      else {
-        setErr('');
-        setList((r.data as Blog[]) || []);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const fetcher = useCallback(async () => {
+    const r = await request<Blog[]>('/blog/hot', { params: { current } });
+    if (!r.success) throw new Error(r.errorMsg || '加载失败');
+    return (r.data as Blog[]) || [];
   }, [current]);
+
+  const { data: list = [], error, isLoading, isValidating, revalidate } = useStaleResource(key, fetcher, {
+    staleMs: 5000,
+    revalidateIntervalMs: 10_000,
+  });
 
   return (
     <>
       <header className="page-head">
         <h1 className="page-title">热门探店</h1>
-        <p className="page-lead">发现校园周边好店与真实笔记，左滑卡片即可点进详情。</p>
+        <p className="page-lead">发现校园周边好店与真实笔记；列表采用 stale-while-revalidate，后台自动刷新。</p>
       </header>
-      {err && <div className="error-banner">{err}</div>}
-      {loading && (
-        <div className="loading-block card" style={{ marginBottom: 14 }}>
-          <span className="spinner" aria-hidden />
-          <span>正在加载精选内容…</span>
+      {error && <div className="error-banner">{error}</div>}
+      {isValidating && list.length > 0 && (
+        <div className="revalidate-hint" aria-live="polite">
+          正在同步最新内容…
         </div>
       )}
-      {!loading &&
+      {isLoading && list.length === 0 && <PageSkeleton variant="list" />}
+      {!isLoading &&
         list.map((b) => (
-          <Link key={b.id} to={`/blog/${b.id}`} className="card" style={{ display: 'block', color: 'inherit' }}>
+          <Link key={b.id} to={`/blog/${b.id}`} className="card route-fade-in" style={{ display: 'block', color: 'inherit' }}>
             <div className="row" style={{ alignItems: 'flex-start' }}>
-              <img className="avatar" src={assetUrl(b.icon)} alt="" width={44} height={44} loading="lazy" decoding="async" />
+              <LazyImage className="avatar" src={assetUrl(b.icon)} alt="" width={44} height={44} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="feed-title">{b.title}</div>
                 <div className="muted" style={{ marginTop: 4 }}>
@@ -57,15 +53,18 @@ export function Discover() {
                 </div>
               </div>
               {firstImage(b.images) && (
-                <img className="feed-thumb" src={firstImage(b.images)} alt="" loading="lazy" decoding="async" />
+                <LazyImage className="feed-thumb" src={firstImage(b.images)} alt="" width={80} height={80} />
               )}
             </div>
           </Link>
         ))}
-      {!loading && list.length === 0 && (
-        <div className="card muted" style={{ textAlign: 'center', padding: 32 }}>
-          暂无数据，稍后再来看看吧。
-        </div>
+      {!isLoading && list.length === 0 && !error && (
+        <EmptyState
+          title="还没有热门笔记"
+          description="换个时间再来看看，或先去商铺页逛逛。"
+          actionLabel="去商铺"
+          onAction={() => nav('/shops')}
+        />
       )}
       {list.length >= 10 && (
         <div className="pager">
@@ -75,6 +74,9 @@ export function Discover() {
           <span className="muted">第 {current} 页</span>
           <button type="button" className="btn" onClick={() => setCurrent((c) => c + 1)}>
             下一页
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => void revalidate()}>
+            手动刷新
           </button>
         </div>
       )}

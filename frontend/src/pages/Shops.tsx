@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { assetUrl, request } from '../api/request';
 import type { Shop, ShopType } from '../api/types';
+import { EmptyState } from '../components/EmptyState';
+import { LazyImage } from '../components/LazyImage';
+import { PageSkeleton } from '../components/PageSkeleton';
 
 export function Shops() {
   const [types, setTypes] = useState<ShopType[]>([]);
@@ -11,6 +14,7 @@ export function Shops() {
   const [name, setName] = useState('');
   const [mode, setMode] = useState<'type' | 'search'>('type');
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     void (async () => {
@@ -26,9 +30,11 @@ export function Shops() {
     if (mode === 'search') return;
     if (typeId == null) return;
     let cancelled = false;
+    setLoading(true);
     void (async () => {
       const r = await request<Shop[]>('/shop/of/type', { params: { typeId, current } });
       if (cancelled) return;
+      setLoading(false);
       if (!r.success) setErr(r.errorMsg || '加载失败');
       else {
         setErr('');
@@ -43,10 +49,12 @@ export function Shops() {
   useEffect(() => {
     if (mode !== 'search') return;
     let cancelled = false;
+    setLoading(true);
     const t = setTimeout(() => {
       void (async () => {
         const r = await request<Shop[]>('/shop/of/name', { params: { name: name || undefined, current } });
         if (cancelled) return;
+        setLoading(false);
         if (!r.success) setErr(r.errorMsg || '搜索失败');
         else {
           setErr('');
@@ -69,7 +77,7 @@ export function Shops() {
     <>
       <header className="page-head">
         <h1 className="page-title">商铺</h1>
-        <p className="page-lead">按分类浏览或搜索店名，封面与评分一眼扫过。</p>
+        <p className="page-lead">按分类浏览或搜索店名；首屏骨架占位，图片懒加载与模糊过渡。</p>
       </header>
       <div className="card">
         <div className="row" style={{ marginBottom: 14, flexWrap: 'wrap' }}>
@@ -99,26 +107,42 @@ export function Shops() {
         )}
         {mode === 'search' && (
           <div className="field" style={{ marginBottom: 0 }}>
-            <label>关键字</label>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="商铺名称" />
+            <label htmlFor="shop-search">关键字</label>
+            <input
+              id="shop-search"
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="商铺名称"
+            />
           </div>
         )}
       </div>
       {err && <div className="error-banner">{err}</div>}
-      {shops.map((s) => (
-        <Link key={s.id} to={`/shop/${s.id}`} className="card" style={{ display: 'flex', gap: 14, color: 'inherit', alignItems: 'center' }}>
-          {cover(s) && <img className="feed-thumb" src={cover(s)} alt="" style={{ width: 88, height: 88 }} />}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="feed-title">{s.name}</div>
-            <div className="muted" style={{ marginTop: 4 }}>
-              {s.area}
+      {loading && <PageSkeleton variant="list" />}
+      {!loading &&
+        shops.map((s) => (
+          <Link key={s.id} to={`/shop/${s.id}`} className="card route-fade-in" style={{ display: 'flex', gap: 14, color: 'inherit', alignItems: 'center' }}>
+            {cover(s) && <LazyImage className="feed-thumb" src={cover(s)} alt="" width={88} height={88} style={{ width: 88, height: 88 }} />}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="feed-title">{s.name}</div>
+              <div className="muted" style={{ marginTop: 4 }}>
+                {s.area}
+              </div>
+              <div className="muted" style={{ fontSize: '0.8rem', marginTop: 6 }}>
+                评分 {(s.score / 10).toFixed(1)} · ￥{s.avgPrice ?? '—'} · 销量 {s.sold}
+              </div>
             </div>
-            <div className="muted" style={{ fontSize: '0.8rem', marginTop: 6 }}>
-              评分 {(s.score / 10).toFixed(1)} · ￥{s.avgPrice ?? '—'} · 销量 {s.sold}
-            </div>
-          </div>
-        </Link>
-      ))}
+          </Link>
+        ))}
+      {!loading && shops.length === 0 && !err && (
+        <EmptyState
+          title="没有找到商铺"
+          description="试试切换分类、清空搜索词，或稍后再试。"
+          actionLabel="切到按分类"
+          onAction={() => setMode('type')}
+        />
+      )}
       {shops.length >= 10 && (
         <div className="pager">
           <button type="button" className="btn" disabled={current <= 1} onClick={() => setCurrent((c) => Math.max(1, c - 1))}>
